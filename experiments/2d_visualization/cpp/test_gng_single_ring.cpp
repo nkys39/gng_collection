@@ -196,6 +196,17 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Save metadata for visualization (ring parameters)
+    {
+        std::ofstream file(output_dir + "/metadata.csv");
+        file << "key,value\n";
+        file << "ring_center_x,0.5\n";
+        file << "ring_center_y,0.5\n";
+        file << "ring_r_inner,0.25\n";
+        file << "ring_r_outer,0.375\n";
+        file << "n_iterations," << n_iterations << "\n";
+    }
+
     std::cout << "\nTraining complete!\n";
     std::cout << "Final: " << model.num_nodes() << " nodes, " << model.num_edges() << " edges\n";
     std::cout << "Results saved to: " << output_dir << "\n";

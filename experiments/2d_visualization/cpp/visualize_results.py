@@ -49,12 +49,28 @@ def create_single_ring_frame(
     nodes: np.ndarray,
     edges: list[tuple[int, int]],
     iteration: int,
+    ring_center: np.ndarray | None = None,
+    ring_r_inner: float | None = None,
+    ring_r_outer: float | None = None,
 ) -> None:
     """Create a single frame for single ring visualization.
 
     Matches the Python version: test_gng_single_ring.py
     """
     ax.clear()
+
+    # Draw ring background (like Python version with bg_image)
+    if ring_center is not None and ring_r_inner is not None and ring_r_outer is not None:
+        theta = np.linspace(0, 2 * np.pi, 100)
+        # Outer ring
+        ring_outer_x = ring_center[0] + ring_r_outer * np.cos(theta)
+        ring_outer_y = ring_center[1] + ring_r_outer * np.sin(theta)
+        # Inner ring (hole)
+        ring_inner_x = ring_center[0] + ring_r_inner * np.cos(theta)
+        ring_inner_y = ring_center[1] + ring_r_inner * np.sin(theta)
+        # Fill ring
+        ax.fill(ring_outer_x, ring_outer_y, color="skyblue", alpha=0.5)
+        ax.fill(ring_inner_x, ring_inner_y, color="white")
 
     # Plot sample points (matching Python version style)
     ax.scatter(samples[:, 0], samples[:, 1], c="skyblue", s=3, alpha=0.3, label="Data")
@@ -171,6 +187,19 @@ def visualize_single_ring(input_dir: Path, output_path: str, fps: int = 10):
     iterations = frames_df["iteration"].tolist()
     print(f"Found {len(iterations)} frames")
 
+    # Load ring metadata if available
+    ring_center = None
+    ring_r_inner = None
+    ring_r_outer = None
+    metadata_path = input_dir / "metadata.csv"
+    if metadata_path.exists():
+        meta_df = pd.read_csv(metadata_path)
+        metadata = dict(zip(meta_df["key"], meta_df["value"]))
+        ring_center = np.array([float(metadata["ring_center_x"]), float(metadata["ring_center_y"])])
+        ring_r_inner = float(metadata["ring_r_inner"])
+        ring_r_outer = float(metadata["ring_r_outer"])
+        print(f"Ring: center=({ring_center[0]}, {ring_center[1]}), r_inner={ring_r_inner}, r_outer={ring_r_outer}")
+
     # Create visualization
     fig, ax = plt.subplots(figsize=(8, 8), facecolor="white")
     images = []
@@ -180,7 +209,8 @@ def visualize_single_ring(input_dir: Path, output_path: str, fps: int = 10):
         nodes = load_nodes(input_dir / f"nodes_{suffix}.csv")
         edges = load_edges(input_dir / f"edges_{suffix}.csv")
 
-        create_single_ring_frame(ax, samples, nodes, edges, iteration)
+        create_single_ring_frame(ax, samples, nodes, edges, iteration,
+                                  ring_center, ring_r_inner, ring_r_outer)
 
         fig.canvas.draw()
         img = Image.frombuffer("RGBA", fig.canvas.get_width_height(), fig.canvas.buffer_rgba())
