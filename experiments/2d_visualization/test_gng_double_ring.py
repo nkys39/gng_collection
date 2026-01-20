@@ -16,181 +16,11 @@ import numpy as np
 from PIL import Image
 
 # Add paths for imports
-sys.path.insert(0, str(Path(__file__).parents[2] / "python"))
+sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gng" / "python"))
 sys.path.insert(0, str(Path(__file__).parents[2] / "data" / "2d"))
 
+from model import GrowingNeuralGas, GNGParams
 from sampler import sample_from_image
-
-
-class SimpleGNG:
-    """Simple GNG implementation for testing visualization."""
-
-    def __init__(
-        self,
-        lambda_: int = 100,
-        eps_b: float = 0.2,
-        eps_n: float = 0.006,
-        alpha: float = 0.5,
-        beta: float = 0.0005,
-        max_age: int = 50,
-        max_nodes: int = 100,
-    ):
-        self.lambda_ = lambda_
-        self.eps_b = eps_b
-        self.eps_n = eps_n
-        self.alpha = alpha
-        self.beta = beta
-        self.max_age = max_age
-        self.max_nodes = max_nodes
-
-        self.nodes = None
-        self.edges = None
-        self.errors = None
-        self.n_iter = 0
-
-    def _init_nodes(self, X: np.ndarray) -> None:
-        """Initialize with 2 random nodes from data."""
-        indices = np.random.choice(len(X), size=2, replace=False)
-        self.nodes = X[indices].copy()
-        self.edges = np.zeros((self.max_nodes, self.max_nodes), dtype=int)
-        self.errors = np.ones(self.max_nodes) * 0.0
-        self.errors[:2] = 1.0
-
-    def _find_nearest_two(self, x: np.ndarray) -> tuple[int, int]:
-        """Find indices of two nearest nodes."""
-        dists = np.linalg.norm(self.nodes - x, axis=1)
-        indices = np.argsort(dists)[:2]
-        return indices[0], indices[1]
-
-    def _get_neighbors(self, node_idx: int) -> list[int]:
-        """Get indices of neighbors connected by edges."""
-        return list(np.where(self.edges[node_idx] > 0)[0])
-
-    def partial_fit(self, x: np.ndarray) -> None:
-        """Single training step."""
-        if self.nodes is None:
-            raise ValueError("Model not initialized. Call fit() first.")
-
-        n_nodes = len(self.nodes)
-
-        # Find two nearest nodes
-        s1, s2 = self._find_nearest_two(x)
-
-        # Update error of winner
-        dist = np.linalg.norm(x - self.nodes[s1])
-        self.errors[s1] += dist
-
-        # Move winner and neighbors toward input
-        self.nodes[s1] += self.eps_b * (x - self.nodes[s1])
-        for neighbor in self._get_neighbors(s1):
-            self.nodes[neighbor] += self.eps_n * (x - self.nodes[neighbor])
-
-        # Update edge between s1 and s2
-        self.edges[s1, s2] = 1
-        self.edges[s2, s1] = 1
-
-        # Increment age of edges from s1
-        for neighbor in self._get_neighbors(s1):
-            if neighbor != s2:
-                self.edges[s1, neighbor] += 1
-                self.edges[neighbor, s1] += 1
-
-        # Remove old edges
-        old_edges = np.where(self.edges[s1] > self.max_age)[0]
-        for neighbor in old_edges:
-            self.edges[s1, neighbor] = 0
-            self.edges[neighbor, s1] = 0
-
-        # Remove isolated nodes (no edges)
-        for i in range(n_nodes):
-            if i < 2:  # Keep at least 2 nodes
-                continue
-            if np.sum(self.edges[i]) == 0 and self.errors[i] > 0:
-                # Mark as removed
-                self.errors[i] = 0
-
-        # Add new node periodically
-        self.n_iter += 1
-        if self.n_iter % self.lambda_ == 0 and n_nodes < self.max_nodes:
-            # Find node with maximum error
-            active_mask = self.errors > 0
-            if np.sum(active_mask) >= 2:
-                q = np.argmax(np.where(active_mask, self.errors, -np.inf))
-                # Find neighbor of q with maximum error
-                neighbors = self._get_neighbors(q)
-                if neighbors:
-                    neighbor_errors = [(n, self.errors[n]) for n in neighbors]
-                    f = max(neighbor_errors, key=lambda x: x[1])[0]
-
-                    # Add new node between q and f
-                    new_pos = (self.nodes[q] + self.nodes[f]) / 2
-                    self.nodes = np.vstack([self.nodes, new_pos])
-                    new_idx = len(self.nodes) - 1
-
-                    # Update edges
-                    new_edges = np.zeros((self.max_nodes, self.max_nodes), dtype=int)
-                    new_edges[: self.edges.shape[0], : self.edges.shape[1]] = self.edges
-                    self.edges = new_edges
-
-                    self.edges[q, f] = 0
-                    self.edges[f, q] = 0
-                    self.edges[q, new_idx] = 1
-                    self.edges[new_idx, q] = 1
-                    self.edges[f, new_idx] = 1
-                    self.edges[new_idx, f] = 1
-
-                    # Update errors
-                    new_errors = np.zeros(self.max_nodes)
-                    new_errors[: len(self.errors)] = self.errors
-                    self.errors = new_errors
-
-                    self.errors[q] *= 1 - self.alpha
-                    self.errors[f] *= 1 - self.alpha
-                    self.errors[new_idx] = (self.errors[q] + self.errors[f]) / 2
-
-        # Decay all errors
-        self.errors *= 1 - self.beta
-
-    def fit(self, X: np.ndarray, n_iterations: int = 1000, callback=None) -> "SimpleGNG":
-        """Train on data.
-
-        Args:
-            X: Training data of shape (n_samples, n_features).
-            n_iterations: Number of training iterations.
-            callback: Optional callback function called each iteration with (model, iter).
-        """
-        self._init_nodes(X)
-
-        for i in range(n_iterations):
-            # Random sample
-            idx = np.random.randint(len(X))
-            self.partial_fit(X[idx])
-
-            if callback is not None:
-                callback(self, i)
-
-        return self
-
-    def get_graph(self) -> tuple[np.ndarray, list[tuple[int, int]]]:
-        """Get nodes and edges.
-
-        Returns:
-            Tuple of (nodes array, list of edge tuples).
-        """
-        active_mask = self.errors > 0
-        active_indices = np.where(active_mask)[0]
-
-        # Map old indices to new
-        index_map = {old: new for new, old in enumerate(active_indices)}
-
-        nodes = self.nodes[active_indices]
-        edges = []
-        for i, old_i in enumerate(active_indices):
-            for old_j in active_indices[i + 1 :]:
-                if self.edges[old_i, old_j] > 0:
-                    edges.append((index_map[old_i], index_map[old_j]))
-
-        return nodes, edges
 
 
 def create_frame(
@@ -269,16 +99,17 @@ def run_experiment(
     points = sample_from_image(image_path, n_samples=n_samples, seed=seed)
     print(f"Sampled {len(points)} points")
 
-    # Setup GNG
-    gng = SimpleGNG(
-        lambda_=50,
-        eps_b=0.1,
-        eps_n=0.01,
-        alpha=0.5,
-        beta=0.0005,
-        max_age=80,
+    # Setup GNG with parameters based on watanabe_gng reference
+    params = GNGParams(
         max_nodes=100,
+        lambda_=100,      # Node insertion interval
+        eps_b=0.08,       # Winner learning rate (LEARNRATE_S1)
+        eps_n=0.008,      # Neighbor learning rate (LEARNRATE_S2)
+        alpha=0.5,        # Error decay on split (ALFA)
+        beta=0.005,       # Global error decay (BETA)
+        max_age=100,      # Maximum edge age (MAX_EDGE_AGE)
     )
+    gng = GrowingNeuralGas(n_dim=2, params=params, seed=seed)
 
     # Collect frames for GIF
     frames = []
@@ -293,15 +124,17 @@ def run_experiment(
             fig.canvas.draw()
 
             # Convert to PIL Image
-            img = Image.frombytes(
-                "RGB", fig.canvas.get_width_height(), fig.canvas.tostring_rgb()
+            fig.canvas.draw()
+            img = Image.frombuffer(
+                "RGBA", fig.canvas.get_width_height(), fig.canvas.buffer_rgba()
             )
-            frames.append(img)
+            frames.append(img.convert("RGB"))
             print(f"Iteration {iteration}: {len(nodes)} nodes, {len(edges)} edges")
 
     # Train
     print(f"Training GNG for {n_iterations} iterations...")
-    gng.fit(points, n_iterations=n_iterations, callback=callback)
+    print(f"Parameters: lambda={params.lambda_}, eps_b={params.eps_b}, eps_n={params.eps_n}, max_age={params.max_age}")
+    gng.train(points, n_iterations=n_iterations, callback=callback)
 
     # Save final frame
     nodes, edges = gng.get_graph()

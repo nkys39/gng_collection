@@ -1,236 +1,422 @@
 """Growing Neural Gas (GNG) implementation.
 
-Reference:
-    Fritzke, B. (1995). A Growing Neural Gas Network Learns Topologies.
-    Advances in Neural Information Processing Systems 7 (NIPS 1994).
+Based on:
+    - Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies"
+    - Reference implementation: watanabe_gng (C++)
+
+See REFERENCE.md for details.
 """
+
+from __future__ import annotations
+
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Callable
 
 import numpy as np
 
-import sys
-from pathlib import Path
 
-# Add python path for imports
-sys.path.insert(0, str(Path(__file__).parents[3] / "python"))
+@dataclass
+class GNGParams:
+    """GNG hyperparameters.
 
-from gng.core.base import BaseGNG
-from gng.core.utils import find_nearest_nodes
+    Default values match the watanabe_gng reference implementation.
+
+    Attributes:
+        max_nodes: Maximum number of nodes.
+        lambda_: Node insertion interval (every lambda_ iterations).
+        eps_b: Learning rate for the winner node (LEARNRATE_S1).
+        eps_n: Learning rate for neighbor nodes (LEARNRATE_S2).
+        alpha: Error decay rate when splitting (ALFA).
+        beta: Global error decay rate (BETA).
+        max_age: Maximum edge age before removal (MAX_EDGE_AGE).
+    """
+
+    max_nodes: int = 100
+    lambda_: int = 100
+    eps_b: float = 0.08
+    eps_n: float = 0.008
+    alpha: float = 0.5
+    beta: float = 0.005
+    max_age: int = 100
 
 
-class GNG(BaseGNG):
-    """Growing Neural Gas algorithm.
+@dataclass
+class NeuronNode:
+    """A neuron node in the GNG network.
 
-    Parameters
-    ----------
-    lambda_ : int
-        Number of steps between node insertions.
-    eps_b : float
-        Learning rate for the winning node.
-    eps_n : float
-        Learning rate for neighbors of the winning node.
-    alpha : float
-        Error reduction factor when inserting a new node.
-    beta : float
-        Global error decay factor.
-    max_age : int
-        Maximum age for edges before removal.
-    max_nodes : int or None
-        Maximum number of nodes. None for unlimited.
+    Attributes:
+        id: Node ID (-1 means invalid/removed).
+        weight: Position vector.
+        error: Accumulated error.
+    """
+
+    id: int = -1
+    weight: np.ndarray = field(default_factory=lambda: np.array([]))
+    error: float = 1.0
+
+
+class GrowingNeuralGas:
+    """Growing Neural Gas algorithm implementation.
+
+    This implementation follows the original GNG algorithm by Fritzke (1995)
+    and is based on the watanabe_gng C++ reference implementation.
+
+    Attributes:
+        params: GNG hyperparameters.
+        nodes: List of neuron nodes.
+        edges: Edge age matrix (0 = no edge, >=1 = connected with age).
+        edges_per_node: Adjacency list for quick neighbor lookup.
+        n_learning: Total number of learning iterations.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from model import GNG
+    >>> from model import GrowingNeuralGas
     >>> X = np.random.rand(1000, 2)
-    >>> gng = GNG()
-    >>> gng.fit(X, epochs=10)
+    >>> gng = GrowingNeuralGas(n_dim=2)
+    >>> gng.train(X, n_iterations=5000)
     >>> nodes, edges = gng.get_graph()
     """
 
     def __init__(
         self,
-        lambda_: int = 100,
-        eps_b: float = 0.2,
-        eps_n: float = 0.006,
-        alpha: float = 0.5,
-        beta: float = 0.0005,
-        max_age: int = 50,
-        max_nodes: int | None = None,
+        n_dim: int = 2,
+        params: GNGParams | None = None,
+        seed: int | None = None,
     ):
-        super().__init__()
-        self.lambda_ = lambda_
-        self.eps_b = eps_b
-        self.eps_n = eps_n
-        self.alpha = alpha
-        self.beta = beta
-        self.max_age = max_age
-        self.max_nodes = max_nodes
+        """Initialize GNG.
 
-        self.errors: np.ndarray | None = None
-        self._step = 0
-
-    def _initialize(self, X: np.ndarray) -> None:
-        """Initialize with two random nodes from the data."""
-        self.dim = X.shape[1]
-        indices = np.random.choice(len(X), 2, replace=False)
-        self.nodes = X[indices].copy()
-        self.errors = np.zeros(2)
-        self.edges = {(0, 1): 0}
-
-    def fit(self, X: np.ndarray, epochs: int = 1) -> "GNG":
-        """Fit the model to the data.
-
-        Parameters
-        ----------
-        X : np.ndarray
-            Input data of shape (n_samples, n_features).
-        epochs : int
-            Number of passes through the data.
-
-        Returns
-        -------
-        self
+        Args:
+            n_dim: Dimension of input data.
+            params: GNG hyperparameters. Uses defaults if None.
+            seed: Random seed for reproducibility.
         """
-        if self.nodes is None:
-            self._initialize(X)
+        self.n_dim = n_dim
+        self.params = params or GNGParams()
+        self.rng = np.random.default_rng(seed)
 
-        for _ in range(epochs):
-            indices = np.random.permutation(len(X))
-            for idx in indices:
-                self.partial_fit(X[idx])
+        # Node management (fixed-size array like reference impl)
+        self.nodes: list[NeuronNode] = [
+            NeuronNode() for _ in range(self.params.max_nodes)
+        ]
+        self._addable_indices: deque[int] = deque(range(self.params.max_nodes))
 
-        self._is_fitted = True
-        return self
+        # Edge management (adjacency matrix for age, dict for quick lookup)
+        self.edges = np.zeros(
+            (self.params.max_nodes, self.params.max_nodes), dtype=np.int32
+        )
+        self.edges_per_node: dict[int, set[int]] = {}
 
-    def partial_fit(self, x: np.ndarray) -> "GNG":
-        """Incrementally fit with a single sample.
+        # Counters
+        self.n_learning = 0
+        self._n_trial = 0
 
-        Parameters
-        ----------
-        x : np.ndarray
-            Single input sample of shape (n_features,).
+        # Initialize with 2 random nodes
+        self._init_nodes()
 
-        Returns
-        -------
-        self
+    def _init_nodes(self) -> None:
+        """Initialize with 2 random nodes."""
+        for _ in range(2):
+            weight = self.rng.random(self.n_dim).astype(np.float32)
+            self._add_node(weight)
+
+    def _add_node(self, weight: np.ndarray) -> int:
+        """Add a new node with given weight.
+
+        Args:
+            weight: Position vector for the new node.
+
+        Returns:
+            ID of the new node, or -1 if no space.
         """
-        if self.nodes is None:
-            raise ValueError("Model must be initialized first. Call fit() with data.")
+        if not self._addable_indices:
+            return -1  # No space
 
-        # Step 1: Find two nearest nodes
-        indices, distances = find_nearest_nodes(x, self.nodes, k=2)
-        s1, s2 = indices[0], indices[1]
+        node_id = self._addable_indices.popleft()
+        self.nodes[node_id] = NeuronNode(id=node_id, weight=weight.copy(), error=1.0)
+        self.edges_per_node[node_id] = set()
+        return node_id
 
-        # Step 2: Update error of winner
-        self.errors[s1] += distances[0] ** 2
+    def _remove_node(self, node_id: int) -> None:
+        """Remove a node (only if isolated).
 
-        # Step 3: Move winner and neighbors toward input
-        self.nodes[s1] += self.eps_b * (x - self.nodes[s1])
+        Args:
+            node_id: ID of node to remove.
+        """
+        if self.edges_per_node.get(node_id):
+            return  # Has edges, don't remove
 
-        for neighbor in self._get_neighbors(s1):
-            self.nodes[neighbor] += self.eps_n * (x - self.nodes[neighbor])
+        self.edges_per_node.pop(node_id, None)
+        self.nodes[node_id].id = -1
+        self._addable_indices.append(node_id)
 
-        # Step 4: Update edge between s1 and s2
-        edge = self._make_edge(s1, s2)
-        self.edges[edge] = 0
+    def _add_edge(self, node1: int, node2: int) -> None:
+        """Add or reset edge between two nodes.
 
-        # Step 5: Increment age of all edges from s1
+        Args:
+            node1: First node ID.
+            node2: Second node ID.
+        """
+        if self.edges[node1, node2] > 0:
+            # Edge exists, reset age
+            self.edges[node1, node2] = 1
+            self.edges[node2, node1] = 1
+        else:
+            # New edge
+            self.edges_per_node[node1].add(node2)
+            self.edges_per_node[node2].add(node1)
+            self.edges[node1, node2] = 1
+            self.edges[node2, node1] = 1
+
+    def _remove_edge(self, node1: int, node2: int) -> None:
+        """Remove edge between two nodes.
+
+        Args:
+            node1: First node ID.
+            node2: Second node ID.
+        """
+        self.edges_per_node[node1].discard(node2)
+        self.edges_per_node[node2].discard(node1)
+        self.edges[node1, node2] = 0
+        self.edges[node2, node1] = 0
+
+    def _find_two_nearest(self, x: np.ndarray) -> tuple[int, int]:
+        """Find the two nearest nodes to input x.
+
+        Args:
+            x: Input vector.
+
+        Returns:
+            Tuple of (winner_id, second_winner_id).
+        """
+        min_dist1 = float("inf")
+        min_dist2 = float("inf")
+        s1_id = -1
+        s2_id = -1
+
+        for node in self.nodes:
+            if node.id == -1:
+                continue
+
+            dist = np.sum((x - node.weight) ** 2)  # Squared distance
+
+            if dist < min_dist1:
+                min_dist2 = min_dist1
+                s2_id = s1_id
+                min_dist1 = dist
+                s1_id = node.id
+            elif dist < min_dist2:
+                min_dist2 = dist
+                s2_id = node.id
+
+        return s1_id, s2_id
+
+    def _one_train_update(self, sample: np.ndarray) -> None:
+        """Single training iteration.
+
+        Follows the watanabe_gng reference implementation.
+
+        Args:
+            sample: Input sample vector.
+        """
+        p = self.params
+
+        # Decay all errors (done during search in reference impl)
+        for node in self.nodes:
+            if node.id == -1:
+                continue
+            node.error -= p.beta * node.error
+
+        # Find two nearest nodes
+        s1_id, s2_id = self._find_two_nearest(sample)
+
+        if s1_id == -1 or s2_id == -1:
+            return
+
+        # Update winner error (using Euclidean distance, not squared)
+        dist = np.sqrt(np.sum((sample - self.nodes[s1_id].weight) ** 2))
+        self.nodes[s1_id].error += dist
+
+        # Move winner toward sample
+        self.nodes[s1_id].weight += p.eps_b * (sample - self.nodes[s1_id].weight)
+
+        # Connect s1 and s2
+        self._add_edge(s1_id, s2_id)
+
+        # Update neighbors and age edges
         edges_to_remove = []
-        for e in list(self.edges.keys()):
-            if s1 in e:
-                self.edges[e] += 1
-                if self.edges[e] > self.max_age:
-                    edges_to_remove.append(e)
+        for neighbor_id in list(self.edges_per_node[s1_id]):
+            if self.edges[s1_id, neighbor_id] > p.max_age:
+                edges_to_remove.append(neighbor_id)
+            else:
+                # Move neighbor toward sample
+                self.nodes[neighbor_id].weight += p.eps_n * (
+                    sample - self.nodes[neighbor_id].weight
+                )
+                # Increment edge age
+                self.edges[s1_id, neighbor_id] += 1
+                self.edges[neighbor_id, s1_id] += 1
 
-        # Step 6: Remove old edges
-        for e in edges_to_remove:
-            del self.edges[e]
+        # Remove old edges and isolated nodes
+        for neighbor_id in edges_to_remove:
+            self._remove_edge(s1_id, neighbor_id)
+            if not self.edges_per_node.get(neighbor_id):
+                self._remove_node(neighbor_id)
 
-        # Step 7: Remove isolated nodes
-        self._remove_isolated_nodes()
+        # Periodically add new node
+        self._n_trial += 1
+        if self._n_trial >= p.lambda_:
+            self._n_trial = 0
 
-        # Step 8: Insert new node
-        self._step += 1
-        if self._step % self.lambda_ == 0:
-            if self.max_nodes is None or self.n_nodes < self.max_nodes:
-                self._insert_node()
+            if self._addable_indices:
+                # Find node with maximum error
+                max_err_q = 0.0
+                q_id = -1
+                for node in self.nodes:
+                    if node.id == -1:
+                        continue
+                    if node.error > max_err_q:
+                        max_err_q = node.error
+                        q_id = node.id
 
-        # Step 9: Decay all errors
-        self.errors *= 1 - self.beta
+                if q_id == -1:
+                    return
+
+                # Find neighbor of q with maximum error
+                max_err_f = 0.0
+                f_id = -1
+                for neighbor_id in self.edges_per_node.get(q_id, set()):
+                    if self.nodes[neighbor_id].error > max_err_f:
+                        max_err_f = self.nodes[neighbor_id].error
+                        f_id = neighbor_id
+
+                if f_id == -1:
+                    return
+
+                # Add new node between q and f
+                new_weight = (self.nodes[q_id].weight + self.nodes[f_id].weight) * 0.5
+                new_id = self._add_node(new_weight)
+
+                if new_id == -1:
+                    return
+
+                # Update edges
+                self._remove_edge(q_id, f_id)
+                self._add_edge(q_id, new_id)
+                self._add_edge(f_id, new_id)
+
+                # Update errors
+                self.nodes[q_id].error *= 1 - p.alpha
+                self.nodes[f_id].error *= 1 - p.alpha
+                self.nodes[new_id].error = (
+                    self.nodes[q_id].error + self.nodes[f_id].error
+                ) * 0.5
+
+        self.n_learning += 1
+
+    def train(
+        self,
+        data: np.ndarray,
+        n_iterations: int = 1000,
+        callback: Callable[[GrowingNeuralGas, int], None] | None = None,
+    ) -> GrowingNeuralGas:
+        """Train on data for multiple iterations.
+
+        Each iteration randomly samples one point from data.
+
+        Args:
+            data: Training data of shape (n_samples, n_dim).
+            n_iterations: Number of training iterations.
+            callback: Optional callback(self, iteration) called each iteration.
+
+        Returns:
+            self for chaining.
+        """
+        n_samples = len(data)
+
+        for i in range(n_iterations):
+            idx = self.rng.integers(0, n_samples)
+            self._one_train_update(data[idx])
+
+            if callback is not None:
+                callback(self, i)
 
         return self
 
-    def _get_neighbors(self, node: int) -> list[int]:
-        """Get all neighbors of a node."""
-        neighbors = []
-        for e in self.edges.keys():
-            if e[0] == node:
-                neighbors.append(e[1])
-            elif e[1] == node:
-                neighbors.append(e[0])
-        return neighbors
+    def partial_fit(self, sample: np.ndarray) -> GrowingNeuralGas:
+        """Single online learning step.
 
-    def _make_edge(self, i: int, j: int) -> tuple[int, int]:
-        """Create a canonical edge representation (smaller index first)."""
-        return (min(i, j), max(i, j))
+        Args:
+            sample: Input vector of shape (n_dim,).
 
-    def _remove_isolated_nodes(self) -> None:
-        """Remove nodes with no edges."""
-        connected = set()
-        for e in self.edges.keys():
-            connected.add(e[0])
-            connected.add(e[1])
+        Returns:
+            self for chaining.
+        """
+        self._one_train_update(sample)
+        return self
 
-        isolated = [i for i in range(self.n_nodes) if i not in connected]
+    @property
+    def n_nodes(self) -> int:
+        """Number of active nodes."""
+        return sum(1 for node in self.nodes if node.id != -1)
 
-        if isolated:
-            # Remove from end to preserve indices
-            for i in sorted(isolated, reverse=True):
-                self._remove_node(i)
+    @property
+    def n_edges(self) -> int:
+        """Number of edges."""
+        count = 0
+        for node_id, neighbors in self.edges_per_node.items():
+            if self.nodes[node_id].id != -1:
+                count += len(neighbors)
+        return count // 2  # Each edge counted twice
 
-    def _remove_node(self, idx: int) -> None:
-        """Remove a node and update edge indices."""
-        self.nodes = np.delete(self.nodes, idx, axis=0)
-        self.errors = np.delete(self.errors, idx)
+    def get_graph(self) -> tuple[np.ndarray, list[tuple[int, int]]]:
+        """Get current graph structure.
 
-        # Update edge indices
-        new_edges = {}
-        for (i, j), age in self.edges.items():
-            new_i = i if i < idx else i - 1
-            new_j = j if j < idx else j - 1
-            if new_i >= 0 and new_j >= 0:
-                new_edges[self._make_edge(new_i, new_j)] = age
-        self.edges = new_edges
+        Returns:
+            Tuple of:
+                - nodes: Array of shape (n_active_nodes, n_dim) with positions.
+                - edges: List of (i, j) tuples indexing into nodes array.
+        """
+        # Get active nodes and create index mapping
+        active_nodes = []
+        index_map = {}
 
-    def _insert_node(self) -> None:
-        """Insert a new node between the node with highest error and its worst neighbor."""
-        if self.n_nodes < 2:
-            return
+        for node in self.nodes:
+            if node.id != -1:
+                index_map[node.id] = len(active_nodes)
+                active_nodes.append(node.weight.copy())
 
-        # Find node with maximum error
-        q = int(np.argmax(self.errors))
+        nodes = (
+            np.array(active_nodes)
+            if active_nodes
+            else np.array([]).reshape(0, self.n_dim)
+        )
 
-        # Find neighbor of q with maximum error
-        neighbors = self._get_neighbors(q)
-        if not neighbors:
-            return
+        # Get edges using new indices
+        edges = []
+        seen = set()
+        for node_id, neighbors in self.edges_per_node.items():
+            if self.nodes[node_id].id == -1:
+                continue
+            for neighbor_id in neighbors:
+                if self.nodes[neighbor_id].id == -1:
+                    continue
+                edge = tuple(sorted([node_id, neighbor_id]))
+                if edge not in seen:
+                    seen.add(edge)
+                    edges.append((index_map[node_id], index_map[neighbor_id]))
 
-        f = max(neighbors, key=lambda n: self.errors[n])
+        return nodes, edges
 
-        # Create new node between q and f
-        new_node = 0.5 * (self.nodes[q] + self.nodes[f])
-        self.nodes = np.vstack([self.nodes, new_node])
-        self.errors = np.append(self.errors, 0.0)
-        r = self.n_nodes - 1
+    def get_node_errors(self) -> np.ndarray:
+        """Get error values for active nodes.
 
-        # Update edges
-        edge_qf = self._make_edge(q, f)
-        if edge_qf in self.edges:
-            del self.edges[edge_qf]
-        self.edges[self._make_edge(q, r)] = 0
-        self.edges[self._make_edge(f, r)] = 0
+        Returns:
+            Array of error values in same order as get_graph() nodes.
+        """
+        return np.array([node.error for node in self.nodes if node.id != -1])
 
-        # Update errors
-        self.errors[q] *= self.alpha
-        self.errors[f] *= self.alpha
-        self.errors[r] = self.errors[q]
+
+# Alias for backward compatibility
+GNG = GrowingNeuralGas
