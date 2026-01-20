@@ -143,9 +143,10 @@ class NeuralGas:
             sorted_idx = np.argsort(distances)
             s1, s2 = sorted_idx[0], sorted_idx[1]
 
-            # Age all edges from winner
-            self.edges[s1, :] += 1
-            self.edges[:, s1] += 1
+            # Age existing edges from winner (only where edges exist)
+            existing_s1 = self.edges[s1, :] > 0
+            self.edges[s1, existing_s1] += 1
+            self.edges[existing_s1, s1] += 1
 
             # Create/reset edge between s1 and s2
             self.edges[s1, s2] = 1
@@ -220,8 +221,11 @@ class NeuralGas:
             sorted_idx = np.argsort(distances)
             s1, s2 = sorted_idx[0], sorted_idx[1]
 
-            self.edges[s1, :] += 1
-            self.edges[:, s1] += 1
+            # Age existing edges from winner
+            existing_s1 = self.edges[s1, :] > 0
+            self.edges[s1, existing_s1] += 1
+            self.edges[existing_s1, s1] += 1
+
             self.edges[s1, s2] = 1
             self.edges[s2, s1] = 1
 
