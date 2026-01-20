@@ -57,7 +57,7 @@ class NeuronNode:
     id: int = -1
     weight: np.ndarray = field(default_factory=lambda: np.array([]))
     error: float = 1.0
-    utility: float = 1.0  # GNG-U specific
+    utility: float = 0.0  # GNG-U specific: initialized to 0 per demogng.de
 
 
 class GrowingNeuralGasU:
@@ -133,12 +133,12 @@ class GrowingNeuralGasU:
             weight = self.rng.random(self.n_dim).astype(np.float32)
             self._add_node(weight)
 
-    def _add_node(self, weight: np.ndarray, utility: float = 1.0) -> int:
+    def _add_node(self, weight: np.ndarray, utility: float = 0.0) -> int:
         """Add a new node with given weight.
 
         Args:
             weight: Position vector for the new node.
-            utility: Initial utility value.
+            utility: Initial utility value (default 0 per demogng.de).
 
         Returns:
             ID of the new node, or -1 if no space.
@@ -273,13 +273,14 @@ class GrowingNeuralGasU:
         if s1_id == -1 or s2_id == -1:
             return
 
-        # Update winner error
-        dist1 = np.sqrt(dist1_sq)
-        self.nodes[s1_id].error += dist1
+        # Update winner error (squared distance per Fritzke 1995 and demogng.de)
+        self.nodes[s1_id].error += dist1_sq
 
-        # GNG-U: Update winner utility
+        # GNG-U: Update winner utility (distance difference per demogng.de)
         # Utility represents how much error would increase if this node were removed
-        self.nodes[s1_id].utility += dist2_sq - dist1_sq
+        dist1 = np.sqrt(dist1_sq)
+        dist2 = np.sqrt(dist2_sq)
+        self.nodes[s1_id].utility += dist2 - dist1
 
         # Move winner toward sample
         self.nodes[s1_id].weight += p.eps_b * (sample - self.nodes[s1_id].weight)

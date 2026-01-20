@@ -234,9 +234,9 @@ class GrowingNeuralGas:
         if s1_id == -1 or s2_id == -1:
             return
 
-        # Update winner error (using Euclidean distance, not squared)
-        dist = np.sqrt(np.sum((sample - self.nodes[s1_id].weight) ** 2))
-        self.nodes[s1_id].error += dist
+        # Update winner error (using squared distance per Fritzke 1995 and demogng.de)
+        dist_sq = np.sum((sample - self.nodes[s1_id].weight) ** 2)
+        self.nodes[s1_id].error += dist_sq
 
         # Move winner toward sample
         self.nodes[s1_id].weight += p.eps_b * (sample - self.nodes[s1_id].weight)

@@ -114,6 +114,8 @@ class SelfOrganizingMap:
     ) -> np.ndarray:
         """Compute neighborhood function values for all neurons.
 
+        Uses Manhattan distance on the grid per demogng.de reference.
+
         Args:
             bmu: (row, col) of the Best Matching Unit.
             sigma: Current neighborhood radius.
@@ -123,12 +125,12 @@ class SelfOrganizingMap:
         """
         bmu_coord = np.array([bmu[0], bmu[1]])
 
-        # Compute squared grid distances
+        # Compute Manhattan grid distances (per demogng.de)
         diff = self.grid_coords - bmu_coord
-        grid_distances_sq = np.sum(diff ** 2, axis=2)
+        grid_distances = np.sum(np.abs(diff), axis=2)
 
-        # Gaussian neighborhood function
-        return np.exp(-grid_distances_sq / (2 * sigma ** 2))
+        # Gaussian neighborhood function: exp(-d^2 / (2 * sigma^2))
+        return np.exp(-(grid_distances ** 2) / (2 * sigma ** 2))
 
     def _one_train_update(
         self, sample: np.ndarray, iteration: int, total_iterations: int

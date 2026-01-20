@@ -233,9 +233,9 @@ class GrowingCellStructures:
         if winner_id == -1:
             return
 
-        # Update winner error
-        dist = np.sqrt(np.sum((sample - self.nodes[winner_id].weight) ** 2))
-        self.nodes[winner_id].error += dist
+        # Update winner error (squared distance for consistency with GNG)
+        dist_sq = np.sum((sample - self.nodes[winner_id].weight) ** 2)
+        self.nodes[winner_id].error += dist_sq
 
         # Move winner toward sample
         self.nodes[winner_id].weight += p.eps_b * (
