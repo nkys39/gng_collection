@@ -27,7 +27,40 @@ data/
 - 大きなファイル（>10MB）は Git LFS を使用するか `.gitignore` に追加
 - 外部データセットはダウンロードスクリプトを用意
 
-## サンプルデータの生成
+## 2Dデータ生成ツール
+
+### 形状画像の生成
+
+```bash
+cd data/2d/shapes
+python generate_shape.py --shape double_ring --output double_ring.png
+```
+
+### 画像から点群をサンプリング
+
+```bash
+cd data/2d
+python sampler.py shapes/double_ring.png -n 2000 -o points.npy
+```
+
+オプション:
+- `-n`: サンプル数（デフォルト: 1000）
+- `-o`: 出力ファイル（.npy または .csv）
+- `--seed`: 乱数シード
+- `--color`: サンプリング対象の色（hex、デフォルト: 87CEEB）
+
+### GNGテスト（GIF出力付き）
+
+```bash
+cd experiments/2d_visualization
+python test_gng_double_ring.py --iterations 5000 --frames 100
+```
+
+出力:
+- `gng_growth.gif` - 学習過程のアニメーション
+- `gng_final.png` - 最終結果
+
+## サンプルデータの生成（コード例）
 
 ```python
 import numpy as np
