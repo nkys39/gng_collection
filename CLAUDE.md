@@ -15,7 +15,8 @@ gng_collection/
 │   ├── gcs/              # Growing Cell Structures
 │   ├── hcl/              # Hard Competitive Learning
 │   ├── lbg/              # Linde-Buzo-Gray
-│   └── growing_grid/     # Growing Grid
+│   ├── growing_grid/     # Growing Grid
+│   └── gng_t/            # GNG-T (Delaunay Triangulation)
 ├── experiments/          # 実験コード
 │   └── 2d_visualization/
 │       ├── _templates/   # テストテンプレート
@@ -154,6 +155,7 @@ git add -f experiments/2d_visualization/samples/
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | 標準 Growing Neural Gas |
 | GNG-U       | ✓      | -   | Utility付きGNG（非定常分布対応） |
+| GNG-T       | ✓      | -   | 明示的Delaunay三角形分割によるGNG |
 | SOM         | ✓      | -   | Self-Organizing Map |
 | Neural Gas  | ✓      | -   | ランクベース競合学習 |
 | GCS         | ✓      | -   | Growing Cell Structures |
@@ -179,6 +181,8 @@ python test_gcs_tracking.py
 python test_hcl_triple_ring.py
 python test_lbg_triple_ring.py
 python test_gg_triple_ring.py
+python test_gngt_triple_ring.py
+python test_gngt_tracking.py
 
 # C++ビルド
 cd experiments/2d_visualization/cpp
@@ -196,7 +200,6 @@ cmake .. && make
 
 - **SOINN** - Self-Organizing Incremental Neural Network
 - **E-SOINN** - Enhanced SOINN
-- **GNG-T** - GNG with Topology
 - **A-GNG** - Adaptive GNG
 - **ITM** - Instantaneous Topological Map
 
