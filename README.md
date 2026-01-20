@@ -81,6 +81,9 @@ gng_collection/
 | SOM         | ✓      | -   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | -   | ランクベース競合学習 |
 | GCS         | ✓      | -   | Growing Cell Structures - メッシュ構造 |
+| HCL         | ✓      | -   | Hard Competitive Learning - 勝者のみ更新 |
+| LBG         | ✓      | -   | Linde-Buzo-Gray - バッチベクトル量子化 |
+| Growing Grid| ✓      | -   | 自己成長グリッド構造 |
 
 ## セットアップ
 

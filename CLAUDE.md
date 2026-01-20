@@ -12,7 +12,10 @@ gng_collection/
 │   ├── gng_u/            # GNG-U (Utility)
 │   ├── som/              # Self-Organizing Map
 │   ├── neural_gas/       # Neural Gas
-│   └── gcs/              # Growing Cell Structures
+│   ├── gcs/              # Growing Cell Structures
+│   ├── hcl/              # Hard Competitive Learning
+│   ├── lbg/              # Linde-Buzo-Gray
+│   └── growing_grid/     # Growing Grid
 ├── experiments/          # 実験コード
 │   └── 2d_visualization/
 │       ├── _templates/   # テストテンプレート
@@ -154,6 +157,9 @@ git add -f experiments/2d_visualization/samples/
 | SOM         | ✓      | -   | Self-Organizing Map |
 | Neural Gas  | ✓      | -   | ランクベース競合学習 |
 | GCS         | ✓      | -   | Growing Cell Structures |
+| HCL         | ✓      | -   | Hard Competitive Learning（勝者のみ更新） |
+| LBG         | ✓      | -   | Linde-Buzo-Gray（バッチ学習） |
+| Growing Grid| ✓      | -   | 自己成長グリッド |
 
 ## よく使うコマンド
 
@@ -170,6 +176,9 @@ python test_ng_triple_ring.py
 python test_ng_tracking.py
 python test_gcs_triple_ring.py
 python test_gcs_tracking.py
+python test_hcl_triple_ring.py
+python test_lbg_triple_ring.py
+python test_gg_triple_ring.py
 
 # C++ビルド
 cd experiments/2d_visualization/cpp
@@ -189,3 +198,8 @@ cmake .. && make
 - **E-SOINN** - Enhanced SOINN
 - **GNG-T** - GNG with Topology
 - **A-GNG** - Adaptive GNG
+- **ITM** - Instantaneous Topological Map
+
+## 参照資料
+
+- demogng.de の実装詳細: `references/notes/demogng_reference.md`
