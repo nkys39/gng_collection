@@ -276,11 +276,10 @@ class GrowingNeuralGasU:
         # Update winner error (squared distance per Fritzke 1995 and demogng.de)
         self.nodes[s1_id].error += dist1_sq
 
-        # GNG-U: Update winner utility (distance difference per demogng.de)
+        # GNG-U: Update winner utility (squared distance difference per demogng.de)
         # Utility represents how much error would increase if this node were removed
-        dist1 = np.sqrt(dist1_sq)
-        dist2 = np.sqrt(dist2_sq)
-        self.nodes[s1_id].utility += dist2 - dist1
+        # Note: demogng.de uses squared distances for both error and utility
+        self.nodes[s1_id].utility += dist2_sq - dist1_sq
 
         # Move winner toward sample
         self.nodes[s1_id].weight += p.eps_b * (sample - self.nodes[s1_id].weight)
