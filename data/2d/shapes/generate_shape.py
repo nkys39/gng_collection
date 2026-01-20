@@ -6,6 +6,43 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 
+def generate_single_ring(
+    output_path: str,
+    size: int = 400,
+    r_inner: int = 100,
+    r_outer: int = 150,
+    bg_color: str = "#FFFFFF",
+    ring_color: str = "#87CEEB",
+) -> None:
+    """Generate a single ring (donut) shape image.
+
+    Args:
+        output_path: Path to save the image.
+        size: Image size (width and height).
+        r_inner: Inner radius of ring.
+        r_outer: Outer radius of ring.
+        bg_color: Background color (hex).
+        ring_color: Ring color (hex).
+    """
+    img = Image.new("RGB", (size, size), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    center = size // 2
+
+    # Draw ring (large circle - hole)
+    draw.ellipse(
+        [center - r_outer, center - r_outer, center + r_outer, center + r_outer],
+        fill=ring_color,
+    )
+    draw.ellipse(
+        [center - r_inner, center - r_inner, center + r_inner, center + r_inner],
+        fill=bg_color,
+    )
+
+    img.save(output_path)
+    print(f"Saved: {output_path}")
+
+
 def generate_double_ring(
     output_path: str,
     size: int = 400,
@@ -63,7 +100,7 @@ def main():
         "--shape",
         type=str,
         default="double_ring",
-        choices=["double_ring"],
+        choices=["single_ring", "double_ring"],
         help="Shape type to generate",
     )
     parser.add_argument(
@@ -78,7 +115,9 @@ def main():
 
     output_path = args.output or f"{args.shape}.png"
 
-    if args.shape == "double_ring":
+    if args.shape == "single_ring":
+        generate_single_ring(output_path, size=args.size)
+    elif args.shape == "double_ring":
         generate_double_ring(output_path, size=args.size)
 
 
