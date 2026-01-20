@@ -107,9 +107,9 @@ void save_center(float x, float y, const std::string& path) {
 }
 
 int main(int argc, char* argv[]) {
-    // Default parameters
+    // Default parameters (matching Python version)
     std::string output_dir = "tracking_output";
-    int n_frames = 200;
+    int n_frames = 120;          // Match Python version
     int samples_per_frame = 50;
     unsigned int seed = 42;
 
@@ -138,15 +138,15 @@ int main(int argc, char* argv[]) {
     const float orbit_center_y = 0.5f;
     const float orbit_radius = 0.25f;
 
-    // Setup GNG with tracking-optimized parameters
+    // Setup GNG with tracking-optimized parameters (matching Python version)
     gng::GNGParams params;
-    params.max_nodes = 100;
-    params.lambda = 20;      // More frequent node insertion for tracking
-    params.eps_b = 0.15f;    // Higher learning rate for faster adaptation
-    params.eps_n = 0.015f;
+    params.max_nodes = 50;       // Match Python version
+    params.lambda = 20;          // More frequent node insertion for tracking
+    params.eps_b = 0.15f;        // Higher learning rate for faster adaptation
+    params.eps_n = 0.01f;        // Match Python version
     params.alpha = 0.5f;
-    params.beta = 0.01f;     // Faster error decay
-    params.max_age = 30;     // Shorter edge lifetime for better adaptation
+    params.beta = 0.01f;         // Faster error decay
+    params.max_age = 30;         // Shorter edge lifetime for better adaptation
 
     std::cout << "GNG Parameters (tracking-optimized):\n";
     std::cout << "  max_nodes: " << params.max_nodes << "\n";

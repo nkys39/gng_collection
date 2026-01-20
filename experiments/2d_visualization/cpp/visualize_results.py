@@ -1,5 +1,7 @@
 """Visualize GNG results from C++ experiments.
 
+This script matches the visualization style of the Python test scripts.
+
 Usage:
     # Visualize single ring test
     python visualize_results.py single_ring_output --output gng_single_ring.gif
@@ -41,19 +43,21 @@ def load_edges(path: Path) -> list[tuple[int, int]]:
     return [(int(row["i"]), int(row["j"])) for _, row in df.iterrows()]
 
 
-def create_frame(
+def create_single_ring_frame(
     ax,
     samples: np.ndarray,
     nodes: np.ndarray,
     edges: list[tuple[int, int]],
-    title: str,
-    center: np.ndarray | None = None,
+    iteration: int,
 ) -> None:
-    """Create a single visualization frame."""
+    """Create a single frame for single ring visualization.
+
+    Matches the Python version: test_gng_single_ring.py
+    """
     ax.clear()
 
-    # Plot samples
-    ax.scatter(samples[:, 0], samples[:, 1], c="skyblue", s=5, alpha=0.4, label="Samples")
+    # Plot sample points (matching Python version style)
+    ax.scatter(samples[:, 0], samples[:, 1], c="skyblue", s=3, alpha=0.3, label="Data")
 
     # Plot edges
     for i, j in edges:
@@ -70,15 +74,88 @@ def create_frame(
     if len(nodes) > 0:
         ax.scatter(nodes[:, 0], nodes[:, 1], c="red", s=50, zorder=5, label="Nodes")
 
-    # Plot center (for tracking)
-    if center is not None:
-        ax.scatter(center[0], center[1], c="green", s=100, marker="x", zorder=6, label="Center")
-
     ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    ax.set_ylim(1, 0)  # Flip y-axis to match image coordinates (like Python version)
     ax.set_aspect("equal")
-    ax.set_title(title)
+    ax.set_title(f"GNG Training - Iteration {iteration} ({len(nodes)} nodes)")
     ax.legend(loc="upper right")
+
+
+def create_tracking_frame(
+    ax,
+    samples: np.ndarray,
+    nodes: np.ndarray,
+    edges: list[tuple[int, int]],
+    ring_center: np.ndarray,
+    ring_r_inner: float,
+    ring_r_outer: float,
+    orbit_center: np.ndarray,
+    orbit_radius: float,
+    frame: int,
+    total_frames: int,
+) -> None:
+    """Create a single frame for tracking visualization.
+
+    Matches the Python version: test_gng_tracking.py
+    """
+    ax.clear()
+
+    # Draw orbit path (dashed circle)
+    theta = np.linspace(0, 2 * np.pi, 100)
+    orbit_x = orbit_center[0] + orbit_radius * np.cos(theta)
+    orbit_y = orbit_center[1] + orbit_radius * np.sin(theta)
+    ax.plot(orbit_x, orbit_y, "g--", alpha=0.3, linewidth=1, label="Orbit")
+
+    # Draw ring outline with fill
+    ring_outer_x = ring_center[0] + ring_r_outer * np.cos(theta)
+    ring_outer_y = ring_center[1] + ring_r_outer * np.sin(theta)
+    ring_inner_x = ring_center[0] + ring_r_inner * np.cos(theta)
+    ring_inner_y = ring_center[1] + ring_r_inner * np.sin(theta)
+    ax.fill(ring_outer_x, ring_outer_y, color="skyblue", alpha=0.3)
+    ax.fill(ring_inner_x, ring_inner_y, color="white")
+    ax.plot(ring_outer_x, ring_outer_y, "c-", alpha=0.5, linewidth=1)
+    ax.plot(ring_inner_x, ring_inner_y, "c-", alpha=0.5, linewidth=1)
+
+    # Draw current samples
+    ax.scatter(
+        samples[:, 0],
+        samples[:, 1],
+        c="skyblue",
+        s=5,
+        alpha=0.5,
+        label="Current samples",
+    )
+
+    # Draw GNG edges
+    for i, j in edges:
+        if i < len(nodes) and j < len(nodes):
+            ax.plot(
+                [nodes[i, 0], nodes[j, 0]],
+                [nodes[i, 1], nodes[j, 1]],
+                "r-",
+                linewidth=1.5,
+                alpha=0.7,
+            )
+
+    # Draw GNG nodes
+    if len(nodes) > 0:
+        ax.scatter(
+            nodes[:, 0],
+            nodes[:, 1],
+            c="red",
+            s=40,
+            zorder=5,
+            label=f"GNG ({len(nodes)} nodes)",
+        )
+
+    # Draw ring center (blue + marker like Python version)
+    ax.scatter([ring_center[0]], [ring_center[1]], c="blue", s=30, marker="+", zorder=6)
+
+    ax.set_xlim(-0.1, 1.1)
+    ax.set_ylim(-0.1, 1.1)
+    ax.set_aspect("equal")
+    ax.set_title(f"GNG Tracking - Frame {frame}/{total_frames}")
+    ax.legend(loc="upper right", fontsize=8)
 
 
 def visualize_single_ring(input_dir: Path, output_path: str, fps: int = 10):
@@ -103,10 +180,7 @@ def visualize_single_ring(input_dir: Path, output_path: str, fps: int = 10):
         nodes = load_nodes(input_dir / f"nodes_{suffix}.csv")
         edges = load_edges(input_dir / f"edges_{suffix}.csv")
 
-        create_frame(
-            ax, samples, nodes, edges,
-            f"GNG Training (C++) - Iteration {iteration} ({len(nodes)} nodes)"
-        )
+        create_single_ring_frame(ax, samples, nodes, edges, iteration)
 
         fig.canvas.draw()
         img = Image.frombuffer("RGBA", fig.canvas.get_width_height(), fig.canvas.buffer_rgba())
@@ -118,13 +192,12 @@ def visualize_single_ring(input_dir: Path, output_path: str, fps: int = 10):
     # Add final frame copies
     images.extend([images[-1]] * 10)
 
-    # Save GIF
-    duration = 1000 // fps  # ms per frame
+    # Save GIF (duration=100ms like Python version)
     images[0].save(
         output_path,
         save_all=True,
         append_images=images[1:],
-        duration=duration,
+        duration=100,
         loop=0,
     )
     print(f"Saved GIF: {output_path}")
@@ -137,7 +210,7 @@ def visualize_single_ring(input_dir: Path, output_path: str, fps: int = 10):
     plt.close(fig)
 
 
-def visualize_tracking(input_dir: Path, output_path: str, fps: int = 20):
+def visualize_tracking(input_dir: Path, output_path: str, fps: int = 12):
     """Visualize tracking test results."""
     print(f"Loading results from {input_dir}")
 
@@ -145,7 +218,17 @@ def visualize_tracking(input_dir: Path, output_path: str, fps: int = 20):
     meta_df = pd.read_csv(input_dir / "metadata.csv")
     metadata = dict(zip(meta_df["key"], meta_df["value"]))
     n_frames = int(metadata["n_frames"])
+    orbit_center_x = float(metadata["orbit_center_x"])
+    orbit_center_y = float(metadata["orbit_center_y"])
+    orbit_radius = float(metadata["orbit_radius"])
+    ring_r_inner = float(metadata["ring_r_inner"])
+    ring_r_outer = float(metadata["ring_r_outer"])
+
+    orbit_center = np.array([orbit_center_x, orbit_center_y])
+
     print(f"Tracking: {n_frames} frames")
+    print(f"Orbit: center=({orbit_center_x}, {orbit_center_y}), radius={orbit_radius}")
+    print(f"Ring: r_inner={ring_r_inner}, r_outer={ring_r_outer}")
 
     # Create visualization
     fig, ax = plt.subplots(figsize=(8, 8), facecolor="white")
@@ -158,12 +241,13 @@ def visualize_tracking(input_dir: Path, output_path: str, fps: int = 20):
         edges = load_edges(input_dir / f"frame_{suffix}_edges.csv")
 
         center_df = pd.read_csv(input_dir / f"frame_{suffix}_center.csv")
-        center = center_df[["x", "y"]].values[0]
+        ring_center = center_df[["x", "y"]].values[0]
 
-        create_frame(
+        create_tracking_frame(
             ax, samples, nodes, edges,
-            f"GNG Tracking (C++) - Frame {frame} ({len(nodes)} nodes)",
-            center=center,
+            ring_center, ring_r_inner, ring_r_outer,
+            orbit_center, orbit_radius,
+            frame + 1, n_frames,
         )
 
         fig.canvas.draw()
@@ -171,18 +255,17 @@ def visualize_tracking(input_dir: Path, output_path: str, fps: int = 20):
         images.append(img.convert("RGB"))
 
         if frame % 20 == 0:
-            print(f"Frame {frame}/{n_frames}: {len(nodes)} nodes, center=({center[0]:.2f}, {center[1]:.2f})")
+            print(f"Frame {frame}/{n_frames}: {len(nodes)} nodes, center=({ring_center[0]:.2f}, {ring_center[1]:.2f})")
 
     # Add final frame copies
     images.extend([images[-1]] * 10)
 
-    # Save GIF
-    duration = 1000 // fps  # ms per frame
+    # Save GIF (duration=80ms like Python version)
     images[0].save(
         output_path,
         save_all=True,
         append_images=images[1:],
-        duration=duration,
+        duration=80,
         loop=0,
     )
     print(f"Saved GIF: {output_path}")
