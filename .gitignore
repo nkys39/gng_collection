@@ -65,6 +65,9 @@ data/**/*.csv
 
 # Experiment results (large)
 experiments/**/results/
+experiments/**/*.png
+experiments/**/*.gif
+experiments/**/*.mp4
 !experiments/**/.gitkeep
 
 # OS
