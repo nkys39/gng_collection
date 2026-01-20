@@ -69,6 +69,7 @@ experiments/**/*.png
 experiments/**/*.gif
 experiments/**/*.mp4
 !experiments/**/.gitkeep
+!experiments/**/samples/
 
 # OS
 .DS_Store
