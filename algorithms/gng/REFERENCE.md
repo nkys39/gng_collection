@@ -8,9 +8,16 @@
 
 ## 元コード
 
-- Repository: (実装ごとに記載)
-- License: (確認の上記載)
-- 取得日: -
+### watanabe_gng (C++)
+
+- 場所: `references/original_code/watanabe_gng/`
+- Author: watanabe
+- Created: 2024/05/16
+- License: (要確認)
+- 特徴:
+  - Eigenライブラリ使用
+  - テンプレートによる2D/3D対応
+  - 固定サイズ配列によるノード管理
 
 ## 概要
 
