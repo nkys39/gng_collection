@@ -3,11 +3,31 @@
 Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクションリポジトリです。
 各アルゴリズムのリファクタリング、2D/3Dデータへの適用テスト、新しいアイデアの実験を行います。
 
+## アルゴリズム概要
+
+### 成長型ネットワーク
+
+| アルゴリズム | 特徴 |
+|-------------|------|
+| **GNG** | ノードを動的に追加、エッジ年齢に基づくトポロジー学習 |
+| **GNG-U** | GNG + Utility基準でノード削除、非定常分布に対応 |
+| **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
+| **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
+
+### 固定ノード数ネットワーク
+
+| アルゴリズム | 特徴 |
+|-------------|------|
+| **SOM** | 固定グリッド、近傍関数（Gaussian）で周辺ノードも更新 |
+| **Neural Gas** | ランク（距離順位）ベースの近傍関数、CHL でエッジ学習 |
+| **HCL** | 最もシンプル、勝者ノードのみ更新（Winner-Take-All） |
+| **LBG** | バッチ学習、k-means類似、収束まで反復 |
+
 ## 可視化サンプル
 
 ### GNG (Growing Neural Gas)
 
-動的にノードを追加してトポロジーを学習。
+動的にノードを追加してトポロジーを学習。エッジ年齢が閾値を超えると削除。
 
 | トリプルリング | トラッキング |
 |:-------------:|:-----------:|
@@ -15,7 +35,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 ### GNG-U (GNG with Utility)
 
-非定常分布に対応。不要なノードをユーティリティ基準で除去。
+非定常分布に対応。Utility（有用度）が低いノードを削除し、分布変化に追従。
 
 | トリプルリング | トラッキング |
 |:-------------:|:-----------:|
@@ -23,7 +43,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 ### SOM (Self-Organizing Map)
 
-固定グリッド構造でトポロジーを保存。
+固定グリッド構造でトポロジーを保存。近傍関数がガウシアンで周辺ノードも同時に更新。
 
 | トリプルリング | トラッキング |
 |:-------------:|:-----------:|
@@ -31,7 +51,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 ### Neural Gas
 
-ランクベースの近傍関数で全ノードを更新。
+ランクベースの近傍関数で全ノードを更新。CHL（Competitive Hebbian Learning）でエッジを学習。
 
 | トリプルリング | トラッキング |
 |:-------------:|:-----------:|
@@ -39,11 +59,35 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 ### GCS (Growing Cell Structures)
 
-三角メッシュ構造を維持しながら成長。
+三角メッシュ構造を維持しながら成長。常に単体複体（simplicial complex）を保持。
 
 | トリプルリング | トラッキング |
 |:-------------:|:-----------:|
 | ![GCS Triple Ring](experiments/2d_visualization/samples/gcs/python/triple_ring_growth.gif) | ![GCS Tracking](experiments/2d_visualization/samples/gcs/python/tracking.gif) |
+
+### HCL (Hard Competitive Learning)
+
+最もシンプルな競合学習。勝者ノードのみを更新（Winner-Take-All）。トポロジー学習なし。
+
+| トリプルリング |
+|:-------------:|
+| ![HCL Triple Ring](experiments/2d_visualization/samples/hcl/python/triple_ring_growth.gif) |
+
+### LBG (Linde-Buzo-Gray)
+
+バッチ学習ベースのベクトル量子化。各エポックで全データを処理し重心を計算。
+
+| トリプルリング |
+|:-------------:|
+| ![LBG Triple Ring](experiments/2d_visualization/samples/lbg/python/triple_ring_growth.gif) |
+
+### Growing Grid
+
+自己成長するグリッド構造。高エラー領域の境界に行/列を追加。
+
+| トリプルリング |
+|:-------------:|
+| ![GG Triple Ring](experiments/2d_visualization/samples/growing_grid/python/triple_ring_growth.gif) |
 
 ## 対応言語
 
@@ -60,7 +104,10 @@ gng_collection/
 │   ├── gng_u/           # GNG-U (Utility)
 │   ├── som/             # Self-Organizing Map
 │   ├── neural_gas/      # Neural Gas
-│   └── gcs/             # Growing Cell Structures
+│   ├── gcs/             # Growing Cell Structures
+│   ├── hcl/             # Hard Competitive Learning
+│   ├── lbg/             # Linde-Buzo-Gray
+│   └── growing_grid/    # Growing Grid
 ├── experiments/         # 実験・アイデア試行
 │   └── 2d_visualization/
 │       ├── _templates/  # テストテンプレート
@@ -138,15 +185,37 @@ ng.train(X, n_iterations=5000)
 nodes, edges = ng.get_graph()
 ```
 
-### GCS
+### HCL
 
 ```python
-from algorithms.gcs.python.model import GrowingCellStructures, GCSParams
+from algorithms.hcl.python.model import HardCompetitiveLearning, HCLParams
 
-params = GCSParams(max_nodes=100, lambda_=100)
-gcs = GrowingCellStructures(n_dim=2, params=params)
-gcs.train(X, n_iterations=5000)
-nodes, edges = gcs.get_graph()
+params = HCLParams(n_nodes=50)
+hcl = HardCompetitiveLearning(n_dim=2, params=params)
+hcl.train(X, n_iterations=5000)
+nodes, edges = hcl.get_graph()  # edges is empty (no topology)
+```
+
+### LBG
+
+```python
+from algorithms.lbg.python.model import LindeBuzoGray, LBGParams
+
+params = LBGParams(n_nodes=50, max_epochs=100)
+lbg = LindeBuzoGray(n_dim=2, params=params)
+lbg.train(X)  # Batch learning
+nodes, edges = lbg.get_graph()
+```
+
+### Growing Grid
+
+```python
+from algorithms.growing_grid.python.model import GrowingGrid, GrowingGridParams
+
+params = GrowingGridParams(initial_height=2, initial_width=2, max_nodes=100)
+gg = GrowingGrid(n_dim=2, params=params)
+gg.train(X, n_iterations=5000)
+nodes, edges = gg.get_graph()
 ```
 
 ## テストの実行
@@ -160,6 +229,9 @@ python test_gngu_triple_ring.py
 python test_som_triple_ring.py
 python test_ng_triple_ring.py
 python test_gcs_triple_ring.py
+python test_hcl_triple_ring.py
+python test_lbg_triple_ring.py
+python test_gg_triple_ring.py
 
 # トラッキングテスト
 python test_gng_tracking.py
@@ -167,6 +239,9 @@ python test_gngu_tracking.py
 python test_som_tracking.py
 python test_ng_tracking.py
 python test_gcs_tracking.py
+
+# 軌跡可視化
+python test_gng_trajectory.py
 ```
 
 ## 新しいアルゴリズムの追加
@@ -186,6 +261,10 @@ python test_gcs_tracking.py
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"
 - **Neural Gas**: Martinetz, T. and Schulten, K. (1991). "A Neural-Gas Network Learns Topologies"
 - **GCS**: Fritzke, B. (1994). "Growing cell structures - a self-organizing network"
+- **HCL**: Rumelhart, D. E., & Zipser, D. (1985). "Feature discovery by competitive learning"
+- **LBG**: Linde, Y., Buzo, A., & Gray, R. (1980). "An Algorithm for Vector Quantizer Design"
+- **Growing Grid**: Fritzke, B. (1995). "Growing Grid - a self-organizing network"
+- **demogng.de**: https://www.demogng.de/ (リファレンス実装)
 
 ## License
 
