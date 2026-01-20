@@ -9,41 +9,41 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 動的にノードを追加してトポロジーを学習。
 
-| シングルリング | トラッキング |
+| トリプルリング | トラッキング |
 |:-------------:|:-----------:|
-| ![GNG Single Ring](experiments/2d_visualization/samples/gng/python/single_ring_growth.gif) | ![GNG Tracking](experiments/2d_visualization/samples/gng/python/tracking.gif) |
+| ![GNG Triple Ring](experiments/2d_visualization/samples/gng/python/triple_ring_growth.gif) | ![GNG Tracking](experiments/2d_visualization/samples/gng/python/tracking.gif) |
 
 ### GNG-U (GNG with Utility)
 
 非定常分布に対応。不要なノードをユーティリティ基準で除去。
 
-| シングルリング | トラッキング |
+| トリプルリング | トラッキング |
 |:-------------:|:-----------:|
-| ![GNG-U Single Ring](experiments/2d_visualization/samples/gng_u/python/single_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
+| ![GNG-U Triple Ring](experiments/2d_visualization/samples/gng_u/python/triple_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
 
 ### SOM (Self-Organizing Map)
 
 固定グリッド構造でトポロジーを保存。
 
-| シングルリング | トラッキング |
+| トリプルリング | トラッキング |
 |:-------------:|:-----------:|
-| ![SOM Single Ring](experiments/2d_visualization/samples/som/python/single_ring_growth.gif) | ![SOM Tracking](experiments/2d_visualization/samples/som/python/tracking.gif) |
+| ![SOM Triple Ring](experiments/2d_visualization/samples/som/python/triple_ring_growth.gif) | ![SOM Tracking](experiments/2d_visualization/samples/som/python/tracking.gif) |
 
 ### Neural Gas
 
 ランクベースの近傍関数で全ノードを更新。
 
-| シングルリング | トラッキング |
+| トリプルリング | トラッキング |
 |:-------------:|:-----------:|
-| ![NG Single Ring](experiments/2d_visualization/samples/neural_gas/python/single_ring_growth.gif) | ![NG Tracking](experiments/2d_visualization/samples/neural_gas/python/tracking.gif) |
+| ![NG Triple Ring](experiments/2d_visualization/samples/neural_gas/python/triple_ring_growth.gif) | ![NG Tracking](experiments/2d_visualization/samples/neural_gas/python/tracking.gif) |
 
 ### GCS (Growing Cell Structures)
 
 三角メッシュ構造を維持しながら成長。
 
-| シングルリング | トラッキング |
+| トリプルリング | トラッキング |
 |:-------------:|:-----------:|
-| ![GCS Single Ring](experiments/2d_visualization/samples/gcs/python/single_ring_growth.gif) | ![GCS Tracking](experiments/2d_visualization/samples/gcs/python/tracking.gif) |
+| ![GCS Triple Ring](experiments/2d_visualization/samples/gcs/python/triple_ring_growth.gif) | ![GCS Tracking](experiments/2d_visualization/samples/gcs/python/tracking.gif) |
 
 ## 対応言語
 
@@ -151,12 +151,12 @@ nodes, edges = gcs.get_graph()
 ```bash
 cd experiments/2d_visualization
 
-# 各アルゴリズムのテスト
-python test_gng_single_ring.py
-python test_gngu_single_ring.py
-python test_som_single_ring.py
-python test_ng_single_ring.py
-python test_gcs_single_ring.py
+# 各アルゴリズムのテスト（トリプルリング）
+python test_gng_triple_ring.py
+python test_gngu_triple_ring.py
+python test_som_triple_ring.py
+python test_ng_triple_ring.py
+python test_gcs_triple_ring.py
 
 # トラッキングテスト
 python test_gng_tracking.py

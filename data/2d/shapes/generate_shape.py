@@ -94,13 +94,63 @@ def generate_double_ring(
     print(f"Saved: {output_path}")
 
 
+def generate_triple_ring(
+    output_path: str,
+    size: int = 400,
+    r_inner: int = 25,
+    r_outer: int = 70,
+    bg_color: str = "#FFFFFF",
+    ring_color: str = "#87CEEB",  # skyblue
+) -> None:
+    """Generate a triple ring shape image (3 rings in triangular arrangement).
+
+    Args:
+        output_path: Path to save the image.
+        size: Image size (width and height).
+        r_inner: Inner radius of each ring.
+        r_outer: Outer radius of each ring.
+        bg_color: Background color (hex).
+        ring_color: Ring color (hex).
+    """
+    img = Image.new("RGB", (size, size), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Calculate centers for triangular arrangement
+    center_x = size // 2
+    center_y = size // 2
+    offset = size // 4  # Distance from center
+
+    # Three ring centers: top, bottom-left, bottom-right
+    centers = [
+        (center_x, center_y - offset),                    # Top
+        (center_x - int(offset * 0.9), center_y + int(offset * 0.6)),  # Bottom-left
+        (center_x + int(offset * 0.9), center_y + int(offset * 0.6)),  # Bottom-right
+    ]
+
+    # Draw each ring
+    for cx, cy in centers:
+        # Outer circle
+        draw.ellipse(
+            [cx - r_outer, cy - r_outer, cx + r_outer, cy + r_outer],
+            fill=ring_color,
+        )
+        # Inner circle (hole)
+        draw.ellipse(
+            [cx - r_inner, cy - r_inner, cx + r_inner, cy + r_inner],
+            fill=bg_color,
+        )
+
+    img.save(output_path)
+    print(f"Saved: {output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate shape images for GNG testing")
     parser.add_argument(
         "--shape",
         type=str,
-        default="double_ring",
-        choices=["single_ring", "double_ring"],
+        default="triple_ring",
+        choices=["single_ring", "double_ring", "triple_ring"],
         help="Shape type to generate",
     )
     parser.add_argument(
@@ -119,6 +169,8 @@ def main():
         generate_single_ring(output_path, size=args.size)
     elif args.shape == "double_ring":
         generate_double_ring(output_path, size=args.size)
+    elif args.shape == "triple_ring":
+        generate_triple_ring(output_path, size=args.size)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Claude Code プロジェクトガイド
 
-このリポジトリはGrowing Neural Gas (GNG)とその派生アルゴリズムのコレクションです。
+このリポジトリはGrowing Neural Gas (GNG)とその関連アルゴリズムのコレクションです。
 
 ## リポジトリ構造
 
@@ -9,22 +9,23 @@ gng_collection/
 ├── algorithms/           # アルゴリズム実装
 │   ├── _template/        # 新アルゴリズム用テンプレート
 │   ├── gng/              # 標準GNG
-│   │   ├── python/model.py
-│   │   ├── cpp/
-│   │   └── REFERENCE.md
-│   └── gng_u/            # GNG-U (Utility)
-│       └── python/model.py
+│   ├── gng_u/            # GNG-U (Utility)
+│   ├── som/              # Self-Organizing Map
+│   ├── neural_gas/       # Neural Gas
+│   └── gcs/              # Growing Cell Structures
 ├── experiments/          # 実験コード
 │   └── 2d_visualization/
 │       ├── _templates/   # テストテンプレート
-│       │   ├── single_ring.py
+│       │   ├── triple_ring.py
 │       │   └── tracking.py
 │       ├── samples/      # 出力サンプル（git管理対象）
 │       │   ├── gng/
 │       │   │   ├── python/
 │       │   │   └── cpp/
-│       │   └── gng_u/
-│       │       └── python/
+│       │   ├── gng_u/
+│       │   ├── som/
+│       │   ├── neural_gas/
+│       │   └── gcs/
 │       └── test_*.py     # テストスクリプト
 ├── data/2d/              # 2Dデータ関連
 │   ├── sampler.py
@@ -54,8 +55,8 @@ cp -r algorithms/_template algorithms/[algorithm_name]
 ```bash
 cd experiments/2d_visualization
 
-# シングルリングテスト
-cp _templates/single_ring.py test_[algorithm]_single_ring.py
+# トリプルリングテスト
+cp _templates/triple_ring.py test_[algorithm]_triple_ring.py
 # - import文を更新
 # - クラス名を更新
 # - 出力ファイル名を更新
@@ -70,8 +71,8 @@ cp _templates/tracking.py test_[algorithm]_tracking.py
 ```bash
 cd experiments/2d_visualization
 
-# シングルリングテスト
-python test_[algorithm]_single_ring.py
+# トリプルリングテスト
+python test_[algorithm]_triple_ring.py
 
 # トラッキングテスト
 python test_[algorithm]_tracking.py
@@ -84,8 +85,8 @@ python test_[algorithm]_tracking.py
 mkdir -p samples/[algorithm]/python
 
 # 出力を移動（ファイル名は統一形式に）
-mv [algorithm]_single_ring_final.png samples/[algorithm]/python/single_ring_final.png
-mv [algorithm]_single_ring_growth.gif samples/[algorithm]/python/single_ring_growth.gif
+mv [algorithm]_triple_ring_final.png samples/[algorithm]/python/triple_ring_final.png
+mv [algorithm]_triple_ring_growth.gif samples/[algorithm]/python/triple_ring_growth.gif
 mv [algorithm]_tracking.gif samples/[algorithm]/python/tracking.gif
 
 # gitに追加（-f が必要）
@@ -104,7 +105,7 @@ git add -f samples/[algorithm]/
 
 ## 標準テストパラメータ
 
-### シングルリングテスト（静的分布）
+### トリプルリングテスト（静的分布）
 ```python
 params = Params(
     max_nodes=100,
@@ -150,16 +151,25 @@ git add -f experiments/2d_visualization/samples/
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | 標準 Growing Neural Gas |
 | GNG-U       | ✓      | -   | Utility付きGNG（非定常分布対応） |
+| SOM         | ✓      | -   | Self-Organizing Map |
+| Neural Gas  | ✓      | -   | ランクベース競合学習 |
+| GCS         | ✓      | -   | Growing Cell Structures |
 
 ## よく使うコマンド
 
 ```bash
 # テスト実行
 cd experiments/2d_visualization
-python test_gng_single_ring.py
+python test_gng_triple_ring.py
 python test_gng_tracking.py
-python test_gngu_single_ring.py
+python test_gngu_triple_ring.py
 python test_gngu_tracking.py
+python test_som_triple_ring.py
+python test_som_tracking.py
+python test_ng_triple_ring.py
+python test_ng_tracking.py
+python test_gcs_triple_ring.py
+python test_gcs_tracking.py
 
 # C++ビルド
 cd experiments/2d_visualization/cpp
@@ -167,7 +177,7 @@ mkdir -p build && cd build
 cmake .. && make
 
 # C++テスト実行 + 可視化
-./test_gng_single_ring && python ../visualize_results.py
+./test_gng_triple_ring && python ../visualize_results.py
 ./test_gng_tracking && python ../visualize_results.py --tracking
 ```
 

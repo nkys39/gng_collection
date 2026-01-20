@@ -1,16 +1,16 @@
-"""Test [ALGORITHM_NAME] on single ring data with GIF visualization.
+"""Test [ALGORITHM_NAME] on triple ring data with GIF visualization.
 
-Template for single ring static distribution test.
+Template for triple ring static distribution test.
 
 Usage:
-    1. Copy this file to test_[algorithm]_single_ring.py
+    1. Copy this file to test_[algorithm]_triple_ring.py
     2. Update imports and class names
     3. Adjust parameters if needed
-    4. Run: python test_[algorithm]_single_ring.py
+    4. Run: python test_[algorithm]_triple_ring.py
 
 Output:
-    - [algorithm]_single_ring_final.png: Final network state
-    - [algorithm]_single_ring_growth.gif: Training animation
+    - [algorithm]_triple_ring_final.png: Final network state
+    - [algorithm]_triple_ring_growth.gif: Training animation
 """
 
 import sys
@@ -83,12 +83,12 @@ def create_frame(
 
 
 def run_experiment(
-    image_path: str = "single_ring.png",
+    image_path: str = "triple_ring.png",
     n_samples: int = 1500,
     n_iterations: int = 5000,
     gif_frames: int = 100,
-    output_gif: str = "[algorithm]_single_ring_growth.gif",
-    output_final: str = "[algorithm]_single_ring_final.png",
+    output_gif: str = "[algorithm]_triple_ring_growth.gif",
+    output_final: str = "[algorithm]_triple_ring_final.png",
     seed: int = 42,
 ) -> None:
     """Run algorithm experiment with visualization.
@@ -109,9 +109,9 @@ def run_experiment(
         print(f"Generating shape image: {image_path}")
         shapes_dir = Path(__file__).parents[2] / "data" / "2d" / "shapes"
         sys.path.insert(0, str(shapes_dir))
-        from generate_shape import generate_single_ring
+        from generate_shape import generate_triple_ring
 
-        generate_single_ring(image_path)
+        generate_triple_ring(image_path)
 
     # Load background image
     bg_image = np.array(Image.open(image_path).convert("RGB"))
@@ -188,16 +188,16 @@ def run_experiment(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Test [ALGORITHM] on single ring data")
-    parser.add_argument("--image", type=str, default="single_ring.png", help="Shape image path")
+    parser = argparse.ArgumentParser(description="Test [ALGORITHM] on triple ring data")
+    parser.add_argument("--image", type=str, default="triple_ring.png", help="Shape image path")
     parser.add_argument("-n", "--n-samples", type=int, default=1500, help="Number of samples")
     parser.add_argument(
         "--iterations", type=int, default=5000, help="Number of training iterations"
     )
     parser.add_argument("--frames", type=int, default=100, help="Number of GIF frames")
-    parser.add_argument("--output-gif", type=str, default="[algorithm]_single_ring_growth.gif", help="Output GIF path")
+    parser.add_argument("--output-gif", type=str, default="[algorithm]_triple_ring_growth.gif", help="Output GIF path")
     parser.add_argument(
-        "--output-final", type=str, default="[algorithm]_single_ring_final.png", help="Output final image path"
+        "--output-final", type=str, default="[algorithm]_triple_ring_final.png", help="Output final image path"
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
 

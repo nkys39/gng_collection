@@ -1,4 +1,4 @@
-"""Test Neural Gas on single ring data with GIF visualization."""
+"""Test GCS (Growing Cell Structures) on triple ring data with GIF visualization."""
 
 import sys
 from pathlib import Path
@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
-sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "neural_gas" / "python"))
+sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gcs" / "python"))
 sys.path.insert(0, str(Path(__file__).parents[2] / "data" / "2d"))
 
-from model import NeuralGas, NeuralGasParams
+from model import GrowingCellStructures, GCSParams
 from sampler import sample_from_image
 
 
@@ -30,7 +30,7 @@ def create_frame(
 
     ax.scatter(points[:, 0], points[:, 1], c="skyblue", s=3, alpha=0.3, label="Data")
 
-    # Plot edges (from Competitive Hebbian Learning)
+    # Plot edges (triangular mesh)
     for i, j in edges:
         ax.plot(
             [nodes[i, 0], nodes[j, 0]],
@@ -45,43 +45,41 @@ def create_frame(
     ax.set_xlim(0, 1)
     ax.set_ylim(1, 0)
     ax.set_aspect("equal")
-    ax.set_title(f"Neural Gas - Iteration {iteration} ({len(nodes)} nodes, {len(edges)} edges)")
+    ax.set_title(f"GCS - Iteration {iteration} ({len(nodes)} nodes, {len(edges)} edges)")
     ax.legend(loc="upper right")
 
 
 def run_experiment(
-    image_path: str = "single_ring.png",
+    image_path: str = "triple_ring.png",
     n_samples: int = 1500,
     n_iterations: int = 5000,
     gif_frames: int = 100,
-    output_gif: str = "ng_single_ring_growth.gif",
-    output_final: str = "ng_single_ring_final.png",
+    output_gif: str = "gcs_triple_ring_growth.gif",
+    output_final: str = "gcs_triple_ring_final.png",
     seed: int = 42,
-    n_nodes: int = 50,
 ) -> None:
-    """Run Neural Gas experiment."""
+    """Run GCS experiment."""
     np.random.seed(seed)
 
     if not Path(image_path).exists():
         shapes_dir = Path(__file__).parents[2] / "data" / "2d" / "shapes"
         sys.path.insert(0, str(shapes_dir))
-        from generate_shape import generate_single_ring
-        generate_single_ring(image_path)
+        from generate_shape import generate_triple_ring
+        generate_triple_ring(image_path)
 
     bg_image = np.array(Image.open(image_path).convert("RGB"))
     print(f"Sampling {n_samples} points from {image_path}...")
     points = sample_from_image(image_path, n_samples=n_samples, seed=seed)
 
-    params = NeuralGasParams(
-        n_nodes=n_nodes,
-        lambda_initial=n_nodes / 2,
-        lambda_final=0.1,
-        eps_initial=0.5,
-        eps_final=0.005,
-        max_age=50,
-        use_chl=True,
+    params = GCSParams(
+        max_nodes=100,
+        lambda_=100,
+        eps_b=0.1,
+        eps_n=0.01,
+        alpha=0.5,
+        beta=0.005,
     )
-    ng = NeuralGas(n_dim=2, params=params, seed=seed)
+    gcs = GrowingCellStructures(n_dim=2, params=params, seed=seed)
 
     frames = []
     frame_interval = max(1, n_iterations // gif_frames)
@@ -98,11 +96,11 @@ def run_experiment(
             frames.append(img.convert("RGB"))
             print(f"Iteration {iteration}: {len(nodes)} nodes, {len(edges)} edges")
 
-    print(f"Training Neural Gas for {n_iterations} iterations...")
-    print(f"Nodes: {n_nodes}, lambda: {params.lambda_initial}->{params.lambda_final}")
-    ng.train(points, n_iterations=n_iterations, callback=callback)
+    print(f"Training GCS for {n_iterations} iterations...")
+    print(f"Parameters: lambda={params.lambda_}, eps_b={params.eps_b}")
+    gcs.train(points, n_iterations=n_iterations, callback=callback)
 
-    nodes, edges = ng.get_graph()
+    nodes, edges = gcs.get_graph()
     create_frame(ax, points, nodes, edges, n_iterations, bg_image)
     plt.savefig(output_final, dpi=150, bbox_inches="tight", facecolor="white")
     print(f"Saved: {output_final}")
