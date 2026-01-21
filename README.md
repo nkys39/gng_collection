@@ -281,9 +281,9 @@ python test_gng_trajectory.py
 
 各アルゴリズムの詳細は `references/notes/` を参照してください。
 
-- **GNG**: Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies"
+- **GNG**: Fritzke, B. (1994). "A Growing Neural Gas Network Learns Topologies" (NIPS'94)
 - **GNG-U**: Fritzke, B. (1997). "Some Competitive Learning Methods"
-- **GNG-T**: Martinetz, T. & Schulten, K. (1994). "Topology representing networks" (Delaunay approach)
+- **GNG-T**: GNG + 明示的Delaunay（Martinetz & Schulten 1994 の手法を応用）
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"
 - **Neural Gas**: Martinetz, T. and Schulten, K. (1991). "A Neural-Gas Network Learns Topologies"
 - **GCS**: Fritzke, B. (1994). "Growing cell structures - a self-organizing network"
