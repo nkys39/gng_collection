@@ -1,10 +1,53 @@
-"""Sample points from shape images."""
+"""Sample points from shape images or mathematical definitions."""
 
 import argparse
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+
+def sample_triple_ring(
+    n_samples: int = 1500,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Sample points from triple ring pattern (3 separate rings in triangle arrangement).
+
+    This matches the layout of triple_ring.png used in visualization tests.
+    Coordinates are in [0, 1] x [0, 1] range.
+
+    Args:
+        n_samples: Total number of points to sample (divided equally among 3 rings).
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Array of shape (n_samples, 2) with (x, y) coordinates in [0, 1] range.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Three separate rings arranged in triangle pattern (matching triple_ring.png)
+    # Each ring: (center_x, center_y, inner_radius, outer_radius)
+    rings = [
+        (0.50, 0.23, 0.06, 0.14),  # top center
+        (0.27, 0.68, 0.06, 0.14),  # bottom left
+        (0.73, 0.68, 0.06, 0.14),  # bottom right
+    ]
+
+    samples_per_ring = n_samples // 3
+    all_points = []
+
+    for cx, cy, r_inner, r_outer in rings:
+        # Sample angles uniformly
+        angles = np.random.uniform(0, 2 * np.pi, samples_per_ring)
+        # Sample radii uniformly in the annulus
+        radii = np.random.uniform(r_inner, r_outer, samples_per_ring)
+        # Convert to Cartesian coordinates
+        x = cx + radii * np.cos(angles)
+        y = cy + radii * np.sin(angles)
+        all_points.append(np.column_stack([x, y]))
+
+    return np.vstack(all_points)
 
 
 def sample_from_image(

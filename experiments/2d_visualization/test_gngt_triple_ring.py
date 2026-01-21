@@ -17,7 +17,27 @@ sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gng_t" / "pyt
 sys.path.insert(0, str(Path(__file__).parents[2] / "data" / "2d"))
 
 from model import GrowingNeuralGasT, GNGTParams
-from sampler import sample_from_image
+from sampler import sample_triple_ring
+
+
+# Triple ring geometry (matching C++ implementation)
+TRIPLE_RING_PARAMS = [
+    (0.50, 0.23, 0.06, 0.14),  # top center
+    (0.27, 0.68, 0.06, 0.14),  # bottom left
+    (0.73, 0.68, 0.06, 0.14),  # bottom right
+]
+
+
+def draw_triple_ring_background(ax) -> None:
+    """Draw triple ring background using geometric shapes."""
+    theta = np.linspace(0, 2 * np.pi, 100)
+    for cx, cy, r_inner, r_outer in TRIPLE_RING_PARAMS:
+        outer_x = cx + r_outer * np.cos(theta)
+        outer_y = cy + r_outer * np.sin(theta)
+        inner_x = cx + r_inner * np.cos(theta)
+        inner_y = cy + r_inner * np.sin(theta)
+        ax.fill(outer_x, outer_y, color="lightblue", alpha=0.3)
+        ax.fill(inner_x, inner_y, color="white")
 
 
 def create_visualization_frame(
@@ -27,14 +47,13 @@ def create_visualization_frame(
     edges: list[tuple[int, int]],
     triangles: list[tuple[int, int, int]] | None,
     iteration: int,
-    bg_image: np.ndarray | None = None,
     show_triangles: bool = True,
 ) -> None:
     """Create a single visualization frame."""
     ax.clear()
 
-    if bg_image is not None:
-        ax.imshow(bg_image, extent=[0, 1, 1, 0], alpha=0.3)
+    # Draw geometric background
+    draw_triple_ring_background(ax)
 
     # Plot sample points
     ax.scatter(points[:, 0], points[:, 1], c="skyblue", s=3, alpha=0.3)
@@ -75,18 +94,15 @@ def run_experiment(
     n_iterations: int = 5000,
     n_frames: int = 50,
     n_samples: int = 1500,
-    image_path: str = "triple_ring.png",
     output_gif: str = "gngt_triple_ring_growth.gif",
     output_png: str = "gngt_triple_ring_final.png",
     seed: int = 42,
     show_triangles: bool = True,
 ) -> None:
     """Run GNG-T triple ring experiment."""
-    # Load and sample from image
-    print(f"Sampling {n_samples} points from {image_path}...")
-
-    bg_image = plt.imread(image_path)
-    points = sample_from_image(image_path, n_samples=n_samples, seed=seed)
+    # Sample points using mathematical formula
+    print(f"Sampling {n_samples} points from triple ring (mathematical)...")
+    points = sample_triple_ring(n_samples=n_samples, seed=seed)
     print(f"Sampled {len(points)} points")
 
     # Setup GNG-T
@@ -118,7 +134,7 @@ def run_experiment(
             triangles = model.get_triangles() if show_triangles else None
 
             create_visualization_frame(
-                ax, points, nodes, edges, triangles, iteration, bg_image, show_triangles
+                ax, points, nodes, edges, triangles, iteration, show_triangles
             )
             fig.canvas.draw()
 
@@ -136,7 +152,7 @@ def run_experiment(
     print(f"Iteration {n_iterations - 1}: {gng_t.n_nodes} nodes, {gng_t.n_edges} edges")
 
     create_visualization_frame(
-        ax, points, nodes, edges, triangles, n_iterations, bg_image, show_triangles
+        ax, points, nodes, edges, triangles, n_iterations, show_triangles
     )
     fig.savefig(output_png, dpi=100, bbox_inches="tight", facecolor="white")
     print(f"Saved final result: {output_png}")
@@ -162,7 +178,6 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", type=int, default=5000)
     parser.add_argument("--frames", type=int, default=50)
     parser.add_argument("--samples", type=int, default=1500)
-    parser.add_argument("--image", type=str, default="triple_ring.png")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no-triangles", action="store_true", help="Hide triangle fill")
 
@@ -172,7 +187,6 @@ if __name__ == "__main__":
         n_iterations=args.iterations,
         n_frames=args.frames,
         n_samples=args.samples,
-        image_path=args.image,
         seed=args.seed,
         show_triangles=not args.no_triangles,
     )

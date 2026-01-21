@@ -16,7 +16,27 @@ sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gng_u" / "pyt
 sys.path.insert(0, str(Path(__file__).parents[2] / "data" / "2d"))
 
 from model import GrowingNeuralGasU, GNGUParams
-from sampler import sample_from_image
+from sampler import sample_triple_ring
+
+
+# Triple ring geometry (matching C++ implementation)
+TRIPLE_RING_PARAMS = [
+    (0.50, 0.23, 0.06, 0.14),  # top center
+    (0.27, 0.68, 0.06, 0.14),  # bottom left
+    (0.73, 0.68, 0.06, 0.14),  # bottom right
+]
+
+
+def draw_triple_ring_background(ax) -> None:
+    """Draw triple ring background using geometric shapes."""
+    theta = np.linspace(0, 2 * np.pi, 100)
+    for cx, cy, r_inner, r_outer in TRIPLE_RING_PARAMS:
+        outer_x = cx + r_outer * np.cos(theta)
+        outer_y = cy + r_outer * np.sin(theta)
+        inner_x = cx + r_inner * np.cos(theta)
+        inner_y = cy + r_inner * np.sin(theta)
+        ax.fill(outer_x, outer_y, color="lightblue", alpha=0.3)
+        ax.fill(inner_x, inner_y, color="white")
 
 
 def create_frame(
@@ -26,13 +46,12 @@ def create_frame(
     edges: list[tuple[int, int]],
     iteration: int,
     n_removals: int = 0,
-    bg_image: np.ndarray | None = None,
 ) -> None:
     """Create a single frame for visualization."""
     ax.clear()
 
-    if bg_image is not None:
-        ax.imshow(bg_image, extent=[0, 1, 1, 0], alpha=0.5)
+    # Draw geometric background
+    draw_triple_ring_background(ax)
 
     # Plot sample points
     ax.scatter(points[:, 0], points[:, 1], c="skyblue", s=3, alpha=0.3, label="Data")
@@ -58,7 +77,6 @@ def create_frame(
 
 
 def run_experiment(
-    image_path: str = "triple_ring.png",
     n_samples: int = 1500,
     n_iterations: int = 5000,
     gif_frames: int = 100,
@@ -69,7 +87,6 @@ def run_experiment(
     """Run GNG-U experiment with visualization.
 
     Args:
-        image_path: Path to shape image.
         n_samples: Number of points to sample.
         n_iterations: Number of GNG-U training iterations.
         gif_frames: Number of frames in output GIF.
@@ -79,21 +96,9 @@ def run_experiment(
     """
     np.random.seed(seed)
 
-    # Generate shape image if not exists
-    if not Path(image_path).exists():
-        print(f"Generating shape image: {image_path}")
-        shapes_dir = Path(__file__).parents[2] / "data" / "2d" / "shapes"
-        sys.path.insert(0, str(shapes_dir))
-        from generate_shape import generate_triple_ring
-
-        generate_triple_ring(image_path)
-
-    # Load background image
-    bg_image = np.array(Image.open(image_path).convert("RGB"))
-
-    # Sample points from image
-    print(f"Sampling {n_samples} points from {image_path}...")
-    points = sample_from_image(image_path, n_samples=n_samples, seed=seed)
+    # Sample points using mathematical formula
+    print(f"Sampling {n_samples} points from triple ring (mathematical)...")
+    points = sample_triple_ring(n_samples=n_samples, seed=seed)
     print(f"Sampled {len(points)} points")
 
     # Setup GNG-U with parameters
@@ -118,7 +123,7 @@ def run_experiment(
     def callback(model, iteration):
         if iteration % frame_interval == 0 or iteration == n_iterations - 1:
             nodes, edges = model.get_graph()
-            create_frame(ax, points, nodes, edges, iteration, model.n_removals, bg_image)
+            create_frame(ax, points, nodes, edges, iteration, model.n_removals)
             fig.canvas.draw()
 
             img = Image.frombuffer(
@@ -134,7 +139,7 @@ def run_experiment(
 
     # Save final frame
     nodes, edges = gng.get_graph()
-    create_frame(ax, points, nodes, edges, n_iterations, gng.n_removals, bg_image)
+    create_frame(ax, points, nodes, edges, n_iterations, gng.n_removals)
     plt.savefig(output_final, dpi=150, bbox_inches="tight", facecolor="white")
     print(f"Saved final result: {output_final}")
 
@@ -158,7 +163,6 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Test GNG-U on triple ring data")
-    parser.add_argument("--image", type=str, default="triple_ring.png", help="Shape image path")
     parser.add_argument("-n", "--n-samples", type=int, default=1500, help="Number of samples")
     parser.add_argument("--iterations", type=int, default=5000, help="Number of training iterations")
     parser.add_argument("--frames", type=int, default=100, help="Number of GIF frames")
@@ -170,7 +174,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run_experiment(
-        image_path=args.image,
         n_samples=args.n_samples,
         n_iterations=args.iterations,
         gif_frames=args.frames,

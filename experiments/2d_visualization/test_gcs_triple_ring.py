@@ -11,7 +11,27 @@ sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gcs" / "pytho
 sys.path.insert(0, str(Path(__file__).parents[2] / "data" / "2d"))
 
 from model import GrowingCellStructures, GCSParams
-from sampler import sample_from_image
+from sampler import sample_triple_ring
+
+
+# Triple ring geometry (matching C++ implementation)
+TRIPLE_RING_PARAMS = [
+    (0.50, 0.23, 0.06, 0.14),  # top center
+    (0.27, 0.68, 0.06, 0.14),  # bottom left
+    (0.73, 0.68, 0.06, 0.14),  # bottom right
+]
+
+
+def draw_triple_ring_background(ax) -> None:
+    """Draw triple ring background using geometric shapes."""
+    theta = np.linspace(0, 2 * np.pi, 100)
+    for cx, cy, r_inner, r_outer in TRIPLE_RING_PARAMS:
+        outer_x = cx + r_outer * np.cos(theta)
+        outer_y = cy + r_outer * np.sin(theta)
+        inner_x = cx + r_inner * np.cos(theta)
+        inner_y = cy + r_inner * np.sin(theta)
+        ax.fill(outer_x, outer_y, color="lightblue", alpha=0.3)
+        ax.fill(inner_x, inner_y, color="white")
 
 
 def create_frame(
@@ -20,13 +40,12 @@ def create_frame(
     nodes: np.ndarray,
     edges: list[tuple[int, int]],
     iteration: int,
-    bg_image: np.ndarray | None = None,
 ) -> None:
     """Create a single frame for visualization."""
     ax.clear()
 
-    if bg_image is not None:
-        ax.imshow(bg_image, extent=[0, 1, 1, 0], alpha=0.5)
+    # Draw geometric background
+    draw_triple_ring_background(ax)
 
     ax.scatter(points[:, 0], points[:, 1], c="skyblue", s=3, alpha=0.3, label="Data")
 
@@ -50,7 +69,6 @@ def create_frame(
 
 
 def run_experiment(
-    image_path: str = "triple_ring.png",
     n_samples: int = 1500,
     n_iterations: int = 5000,
     gif_frames: int = 100,
@@ -61,15 +79,10 @@ def run_experiment(
     """Run GCS experiment."""
     np.random.seed(seed)
 
-    if not Path(image_path).exists():
-        shapes_dir = Path(__file__).parents[2] / "data" / "2d" / "shapes"
-        sys.path.insert(0, str(shapes_dir))
-        from generate_shape import generate_triple_ring
-        generate_triple_ring(image_path)
-
-    bg_image = np.array(Image.open(image_path).convert("RGB"))
-    print(f"Sampling {n_samples} points from {image_path}...")
-    points = sample_from_image(image_path, n_samples=n_samples, seed=seed)
+    # Sample points using mathematical formula
+    print(f"Sampling {n_samples} points from triple ring (mathematical)...")
+    points = sample_triple_ring(n_samples=n_samples, seed=seed)
+    print(f"Sampled {len(points)} points")
 
     params = GCSParams(
         max_nodes=100,
@@ -88,7 +101,7 @@ def run_experiment(
     def callback(model, iteration):
         if iteration % frame_interval == 0 or iteration == n_iterations - 1:
             nodes, edges = model.get_graph()
-            create_frame(ax, points, nodes, edges, iteration, bg_image)
+            create_frame(ax, points, nodes, edges, iteration)
             fig.canvas.draw()
             img = Image.frombuffer(
                 "RGBA", fig.canvas.get_width_height(), fig.canvas.buffer_rgba()
@@ -101,7 +114,7 @@ def run_experiment(
     gcs.train(points, n_iterations=n_iterations, callback=callback)
 
     nodes, edges = gcs.get_graph()
-    create_frame(ax, points, nodes, edges, n_iterations, bg_image)
+    create_frame(ax, points, nodes, edges, n_iterations)
     plt.savefig(output_final, dpi=150, bbox_inches="tight", facecolor="white")
     print(f"Saved: {output_final}")
 
