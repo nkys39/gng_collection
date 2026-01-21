@@ -62,18 +62,19 @@ def create_frame(
     """Create a single frame for triple ring visualization."""
     ax.clear()
 
-    # Draw triple ring background
+    # Draw triple ring background (3 separate rings in triangle pattern)
     theta = np.linspace(0, 2 * np.pi, 100)
+    # Each ring: (center_x, center_y, inner_radius, outer_radius)
     rings = [
-        (0.15, 0.20),  # inner ring
-        (0.25, 0.30),  # middle ring
-        (0.35, 0.40),  # outer ring
+        (0.50, 0.23, 0.06, 0.14),  # top center
+        (0.27, 0.68, 0.06, 0.14),  # bottom left
+        (0.73, 0.68, 0.06, 0.14),  # bottom right
     ]
-    for r_inner, r_outer in rings:
-        outer_x = 0.5 + r_outer * np.cos(theta)
-        outer_y = 0.5 + r_outer * np.sin(theta)
-        inner_x = 0.5 + r_inner * np.cos(theta)
-        inner_y = 0.5 + r_inner * np.sin(theta)
+    for cx, cy, r_inner, r_outer in rings:
+        outer_x = cx + r_outer * np.cos(theta)
+        outer_y = cy + r_outer * np.sin(theta)
+        inner_x = cx + r_inner * np.cos(theta)
+        inner_y = cy + r_inner * np.sin(theta)
         ax.fill(outer_x, outer_y, color="lightblue", alpha=0.3)
         ax.fill(inner_x, inner_y, color="white")
 

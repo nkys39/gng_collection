@@ -13,7 +13,8 @@
 #include "gng.hpp"
 
 /**
- * @brief Sample points from triple ring (3 concentric rings).
+ * @brief Sample points from triple ring (3 separate rings in triangle pattern).
+ * Matches the triple_ring.png image layout.
  */
 std::vector<Eigen::Vector2f> sample_triple_ring(
     int n_samples,
@@ -22,11 +23,12 @@ std::vector<Eigen::Vector2f> sample_triple_ring(
     std::mt19937 rng(seed);
     std::uniform_real_distribution<float> angle_dist(0.0f, 2.0f * M_PI);
 
-    // Three rings with different radii
-    std::vector<std::pair<float, float>> rings = {
-        {0.15f, 0.20f},  // inner ring
-        {0.25f, 0.30f},  // middle ring
-        {0.35f, 0.40f},  // outer ring
+    // Three separate rings arranged in triangle pattern (matching triple_ring.png)
+    // Each ring: {center_x, center_y, inner_radius, outer_radius}
+    std::vector<std::tuple<float, float, float, float>> rings = {
+        {0.50f, 0.23f, 0.06f, 0.14f},  // top center
+        {0.27f, 0.68f, 0.06f, 0.14f},  // bottom left
+        {0.73f, 0.68f, 0.06f, 0.14f},  // bottom right
     };
 
     std::vector<Eigen::Vector2f> samples;
@@ -34,13 +36,13 @@ std::vector<Eigen::Vector2f> sample_triple_ring(
 
     int samples_per_ring = n_samples / 3;
 
-    for (const auto& [r_inner, r_outer] : rings) {
+    for (const auto& [cx, cy, r_inner, r_outer] : rings) {
         std::uniform_real_distribution<float> radius_dist(r_inner, r_outer);
         for (int i = 0; i < samples_per_ring; ++i) {
             float angle = angle_dist(rng);
             float radius = radius_dist(rng);
-            float x = 0.5f + radius * std::cos(angle);
-            float y = 0.5f + radius * std::sin(angle);
+            float x = cx + radius * std::cos(angle);
+            float y = cy + radius * std::sin(angle);
             samples.emplace_back(x, y);
         }
     }
