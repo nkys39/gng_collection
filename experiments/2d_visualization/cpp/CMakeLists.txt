@@ -18,3 +18,7 @@ target_link_libraries(test_gng_single_ring Eigen3::Eigen)
 # Tracking test
 add_executable(test_gng_tracking test_gng_tracking.cpp)
 target_link_libraries(test_gng_tracking Eigen3::Eigen)
+
+# Timing test
+add_executable(test_gng_timing test_gng_timing.cpp)
+target_link_libraries(test_gng_timing Eigen3::Eigen)
