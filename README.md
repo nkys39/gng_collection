@@ -11,7 +11,8 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 |-------------|------|
 | **GNG** | ノードを動的に追加、エッジ年齢に基づくトポロジー学習 |
 | **GNG-U** | GNG + Utility基準でノード削除、非定常分布に対応 |
-| **GNG-T** | GNG + 明示的Delaunay三角形分割によるトポロジー管理 |
+| **GNG-T** | GNG + ヒューリスティック三角形分割（四角形探索・交差点探索） |
+| **GNG-D** | GNG + 明示的Delaunay三角形分割（scipy.spatial.Delaunay） |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
 
@@ -42,13 +43,21 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 |:-------------:|:-----------:|
 | ![GNG-U Triple Ring](experiments/2d_visualization/samples/gng_u/python/triple_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
 
-### GNG-T (GNG with Delaunay Triangulation)
+### GNG-T (GNG with Triangulation)
 
-明示的なDelaunay三角形分割でトポロジーを管理。厳密な三角形メッシュ構造を保証。
+ヒューリスティックな三角形分割（四角形探索・交差点探索）でメッシュ構造を改善。Kubota & Satomi (2008) に基づく実装。
 
 | トリプルリング | トラッキング |
 |:-------------:|:-----------:|
 | ![GNG-T Triple Ring](experiments/2d_visualization/samples/gng_t/python/triple_ring_growth.gif) | ![GNG-T Tracking](experiments/2d_visualization/samples/gng_t/python/tracking.gif) |
+
+### GNG-D (GNG with explicit Delaunay)
+
+scipy.spatial.Delaunay による明示的な三角形分割でトポロジーを管理。厳密な幾何学的メッシュ構造を保証。
+
+| トリプルリング | トラッキング |
+|:-------------:|:-----------:|
+| ![GNG-D Triple Ring](experiments/2d_visualization/samples/gng_d/python/triple_ring_growth.gif) | ![GNG-D Tracking](experiments/2d_visualization/samples/gng_d/python/tracking.gif) |
 
 ### SOM (Self-Organizing Map)
 
@@ -111,13 +120,14 @@ gng_collection/
 │   ├── _template/       # 新アルゴリズム用テンプレート
 │   ├── gng/             # 標準GNG
 │   ├── gng_u/           # GNG-U (Utility)
+│   ├── gng_t/           # GNG-T (Triangulation - Kubota 2008)
+│   ├── gng_d/           # GNG-D (explicit Delaunay)
 │   ├── som/             # Self-Organizing Map
 │   ├── neural_gas/      # Neural Gas
 │   ├── gcs/             # Growing Cell Structures
 │   ├── hcl/             # Hard Competitive Learning
 │   ├── lbg/             # Linde-Buzo-Gray
-│   ├── growing_grid/    # Growing Grid
-│   └── gng_t/           # GNG-T (Delaunay Triangulation)
+│   └── growing_grid/    # Growing Grid
 ├── experiments/         # 実験・アイデア試行
 │   └── 2d_visualization/
 │       ├── _templates/  # テストテンプレート
@@ -135,7 +145,8 @@ gng_collection/
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | Growing Neural Gas - 動的トポロジー学習 |
 | GNG-U       | ✓      | -   | GNG with Utility - 非定常分布対応 |
-| GNG-T       | ✓      | -   | GNG with Delaunay - 明示的三角形分割 |
+| GNG-T       | ✓      | -   | GNG with Triangulation - ヒューリスティック三角形分割 |
+| GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割 |
 | SOM         | ✓      | -   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | -   | ランクベース競合学習 |
 | GCS         | ✓      | -   | Growing Cell Structures - メッシュ構造 |
@@ -174,16 +185,28 @@ gng.train(X, n_iterations=5000)
 nodes, edges = gng.get_graph()
 ```
 
-### GNG-T (Delaunay Triangulation)
+### GNG-T (Triangulation - Kubota 2008)
 
 ```python
 from algorithms.gng_t.python.model import GrowingNeuralGasT, GNGTParams
 
-params = GNGTParams(max_nodes=50, lambda_=100, update_topology_every=10)
+params = GNGTParams(max_nodes=50, lambda_=100, max_age=100)
 gng_t = GrowingNeuralGasT(n_dim=2, params=params)
 gng_t.train(X, n_iterations=5000)
 nodes, edges = gng_t.get_graph()
-triangles = gng_t.get_triangles()  # Delaunay三角形を取得
+triangles = gng_t.get_triangles()  # 三角形を取得
+```
+
+### GNG-D (explicit Delaunay)
+
+```python
+from algorithms.gng_d.python.model import GrowingNeuralGasD, GNGDParams
+
+params = GNGDParams(max_nodes=50, lambda_=100, update_topology_every=10)
+gng_d = GrowingNeuralGasD(n_dim=2, params=params)
+gng_d.train(X, n_iterations=5000)
+nodes, edges = gng_d.get_graph()
+triangles = gng_d.get_triangles()  # Delaunay三角形を取得
 ```
 
 ### SOM
@@ -250,6 +273,7 @@ cd experiments/2d_visualization
 python test_gng_triple_ring.py
 python test_gngu_triple_ring.py
 python test_gngt_triple_ring.py
+python test_gngd_triple_ring.py
 python test_som_triple_ring.py
 python test_ng_triple_ring.py
 python test_gcs_triple_ring.py
@@ -261,6 +285,7 @@ python test_gg_triple_ring.py
 python test_gng_tracking.py
 python test_gngu_tracking.py
 python test_gngt_tracking.py
+python test_gngd_tracking.py
 python test_som_tracking.py
 python test_ng_tracking.py
 python test_gcs_tracking.py
@@ -281,9 +306,10 @@ python test_gng_trajectory.py
 
 各アルゴリズムの詳細は `references/notes/` を参照してください。
 
-- **GNG**: Fritzke, B. (1994). "A Growing Neural Gas Network Learns Topologies" (NIPS'94)
+- **GNG**: Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies" (NIPS'94)
 - **GNG-U**: Fritzke, B. (1997). "Some Competitive Learning Methods"
-- **GNG-T**: GNG + 明示的Delaunay（Martinetz & Schulten 1994 の手法を応用）
+- **GNG-T**: Kubota, N. & Satomi, M. (2008). "Growing Neural Gas with Triangulation"
+- **GNG-D**: Martinetz & Schulten (1994) の明示的Delaunay手法を応用
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"
 - **Neural Gas**: Martinetz, T. and Schulten, K. (1991). "A Neural-Gas Network Learns Topologies"
 - **GCS**: Fritzke, B. (1994). "Growing cell structures - a self-organizing network"

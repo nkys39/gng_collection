@@ -10,13 +10,14 @@ gng_collection/
 │   ├── _template/        # 新アルゴリズム用テンプレート
 │   ├── gng/              # 標準GNG
 │   ├── gng_u/            # GNG-U (Utility)
+│   ├── gng_t/            # GNG-T (Triangulation - Kubota 2008)
+│   ├── gng_d/            # GNG-D (explicit Delaunay)
 │   ├── som/              # Self-Organizing Map
 │   ├── neural_gas/       # Neural Gas
 │   ├── gcs/              # Growing Cell Structures
 │   ├── hcl/              # Hard Competitive Learning
 │   ├── lbg/              # Linde-Buzo-Gray
-│   ├── growing_grid/     # Growing Grid
-│   └── gng_t/            # GNG-T (Delaunay Triangulation)
+│   └── growing_grid/     # Growing Grid
 ├── experiments/          # 実験コード
 │   └── 2d_visualization/
 │       ├── _templates/   # テストテンプレート
@@ -155,7 +156,8 @@ git add -f experiments/2d_visualization/samples/
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | 標準 Growing Neural Gas |
 | GNG-U       | ✓      | -   | Utility付きGNG（非定常分布対応） |
-| GNG-T       | ✓      | -   | 明示的Delaunay三角形分割によるGNG |
+| GNG-T       | ✓      | -   | ヒューリスティック三角形分割（Kubota 2008） |
+| GNG-D       | ✓      | -   | 明示的Delaunay三角形分割（scipy.spatial） |
 | SOM         | ✓      | -   | Self-Organizing Map |
 | Neural Gas  | ✓      | -   | ランクベース競合学習 |
 | GCS         | ✓      | -   | Growing Cell Structures |
@@ -172,6 +174,10 @@ python test_gng_triple_ring.py
 python test_gng_tracking.py
 python test_gngu_triple_ring.py
 python test_gngu_tracking.py
+python test_gngt_triple_ring.py
+python test_gngt_tracking.py
+python test_gngd_triple_ring.py
+python test_gngd_tracking.py
 python test_som_triple_ring.py
 python test_som_tracking.py
 python test_ng_triple_ring.py
@@ -181,8 +187,6 @@ python test_gcs_tracking.py
 python test_hcl_triple_ring.py
 python test_lbg_triple_ring.py
 python test_gg_triple_ring.py
-python test_gngt_triple_ring.py
-python test_gngt_tracking.py
 
 # C++ビルド
 cd experiments/2d_visualization/cpp

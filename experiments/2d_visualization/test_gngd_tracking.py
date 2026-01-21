@@ -1,7 +1,7 @@
-"""Test GNG-T dynamic tracking on moving ring.
+"""Test GNG-D dynamic tracking on moving ring.
 
-GNG-T uses heuristic triangulation (quadrilateral search + intersection search)
-based on Kubota & Satomi (2008) while tracking non-stationary distributions.
+GNG-D uses explicit scipy.spatial.Delaunay triangulation, which provides
+clean mesh structure while tracking non-stationary distributions.
 """
 
 import argparse
@@ -13,9 +13,9 @@ import numpy as np
 from PIL import Image
 
 # Add paths for imports
-sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gng_t" / "python"))
+sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gng_d" / "python"))
 
-from model import GrowingNeuralGasT, GNGTParams
+from model import GrowingNeuralGasD, GNGDParams
 
 
 def generate_ring_samples(
@@ -80,14 +80,14 @@ def create_tracking_frame(
         label="Current samples",
     )
 
-    # Draw triangles (filled)
+    # Draw Delaunay triangles (filled)
     if show_triangles and triangles and len(nodes) > 0:
         for tri in triangles:
             triangle = plt.Polygon(
                 nodes[list(tri)],
                 fill=True,
-                facecolor="lightgreen",
-                edgecolor="green",
+                facecolor="yellow",
+                edgecolor="orange",
                 alpha=0.15,
                 linewidth=0.5,
             )
@@ -111,7 +111,7 @@ def create_tracking_frame(
             c="red",
             s=40,
             zorder=5,
-            label=f"GNG-T ({len(nodes)} nodes)",
+            label=f"GNG-D ({len(nodes)} nodes)",
         )
 
     # Draw ring center
@@ -120,7 +120,7 @@ def create_tracking_frame(
     ax.set_xlim(-0.1, 1.1)
     ax.set_ylim(-0.1, 1.1)
     ax.set_aspect("equal")
-    ax.set_title(f"GNG-T (Triangulation) Tracking - Frame {frame}/{total_frames}")
+    ax.set_title(f"GNG-D (Delaunay) Tracking - Frame {frame}/{total_frames}")
     ax.legend(loc="upper right", fontsize=8)
 
 
@@ -131,33 +131,33 @@ def run_tracking_experiment(
     ring_r_outer: float = 0.12,
     total_frames: int = 120,
     samples_per_frame: int = 50,
-    output_gif: str = "gngt_tracking.gif",
+    output_gif: str = "gngd_tracking.gif",
     seed: int = 42,
     show_triangles: bool = True,
 ) -> None:
-    """Run GNG-T tracking experiment."""
+    """Run GNG-D tracking experiment."""
     rng = np.random.default_rng(seed)
     orbit_center = np.array(orbit_center)
 
-    # Setup GNG-T with tracking-oriented parameters
-    params = GNGTParams(
+    # Setup GNG-D with tracking-oriented parameters
+    params = GNGDParams(
         max_nodes=50,
-        lambda_=20,       # Insert nodes more frequently
-        eps_b=0.15,       # Higher learning rate for tracking
+        lambda_=20,              # Insert nodes more frequently
+        eps_b=0.15,              # Higher learning rate for tracking
         eps_n=0.01,
         alpha=0.5,
-        beta=0.01,        # Higher decay for adaptation
-        max_age=30,       # Shorter edge lifetime for tracking
+        beta=0.01,               # Higher decay for adaptation
+        update_topology_every=5,  # Frequent topology updates for tracking
     )
-    gng_t = GrowingNeuralGasT(n_dim=2, params=params, seed=seed)
+    gng_d = GrowingNeuralGasD(n_dim=2, params=params, seed=seed)
 
     # Create figure
     fig, ax = plt.subplots(figsize=(8, 8), facecolor="white")
     frames = []
 
-    print(f"Running GNG-T tracking experiment ({total_frames} frames)...")
+    print(f"Running GNG-D tracking experiment ({total_frames} frames)...")
     print(f"Ring moves along orbit: center={orbit_center}, radius={orbit_radius}")
-    print(f"GNG-T params: lambda={params.lambda_}, eps_b={params.eps_b}, max_age={params.max_age}")
+    print(f"GNG-D params: lambda={params.lambda_}, eps_b={params.eps_b}, update_every={params.update_topology_every}")
 
     for frame in range(total_frames):
         # Calculate ring center position on orbit
@@ -169,13 +169,13 @@ def run_tracking_experiment(
             ring_center, ring_r_inner, ring_r_outer, samples_per_frame, rng
         )
 
-        # Train GNG-T on current samples
+        # Train GNG-D on current samples
         for sample in samples:
-            gng_t.partial_fit(sample)
+            gng_d.partial_fit(sample)
 
-        # Get current GNG-T state
-        nodes, edges = gng_t.get_graph()
-        triangles = gng_t.get_triangles() if show_triangles else None
+        # Get current GNG-D state
+        nodes, edges = gng_d.get_graph()
+        triangles = gng_d.get_triangles() if show_triangles else None
 
         # Create frame
         create_tracking_frame(
@@ -221,13 +221,13 @@ def run_tracking_experiment(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Test GNG-T tracking on moving ring")
+    parser = argparse.ArgumentParser(description="Test GNG-D tracking on moving ring")
     parser.add_argument("--orbit-radius", type=float, default=0.25)
     parser.add_argument("--ring-inner", type=float, default=0.08)
     parser.add_argument("--ring-outer", type=float, default=0.12)
     parser.add_argument("--frames", type=int, default=120)
     parser.add_argument("--samples", type=int, default=50)
-    parser.add_argument("--output", type=str, default="gngt_tracking.gif")
+    parser.add_argument("--output", type=str, default="gngd_tracking.gif")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no-triangles", action="store_true", help="Hide triangle fill")
 

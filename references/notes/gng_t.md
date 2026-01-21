@@ -1,70 +1,80 @@
-# GNG-T (Growing Neural Gas with Delaunay Triangulation)
+# GNG-T (Growing Neural Gas with Triangulation)
 
 ## 概要
 
-GNG-T は標準GNGの Competitive Hebbian Learning (CHL) を明示的な Delaunay 三角形分割に置き換えた変種である。これにより、厳密な三角形メッシュ構造を保証する。
+GNG-T (Growing Neural Gas with Triangulation) は、Kubota & Satomi (2008) により提案された GNG の拡張である。標準GNGにヒューリスティックな三角形分割（四角形探索・交差点探索）を追加し、より適切な三角形メッシュ構造を維持する。
+
+## 元論文
+
+- Kubota, N. & Satomi, M. (2008). "Growing Neural Gas with Triangulation for reconstructing a 3D surface model"
+- World Automation Congress (2008)
+- 久保田直行, 里見将志 (2008). "自己増殖型ニューラルネットワークと教師無し分類学習"
 
 ## 理論的背景
 
-### Martinetz & Schulten (1994) の2つのアプローチ
+### GCS との関係
 
-元論文「Topology representing networks」では、Delaunay 三角形分割を形成する2つの方法が提案されている：
+GCS (Growing Cell Structures) は Delaunay 三角形分割を維持しながらノードを追加するが、ノードやエッジの削除を行わないため、複数のクラスタへの分割ができない。
 
-1. **CHL (Competitive Hebbian Learning)** - オンライン、インクリメンタル
-   - 勝者と次点の間にエッジを作成
-   - データ分布に沿った「誘導Delaunay」を形成
-   - 標準GNGで使用
+### GNG との関係
 
-2. **明示的Delaunay計算** - オフライン、幾何学的
-   - ノード位置から直接Delaunay三角形分割を計算
-   - 純粋な幾何学的三角形分割
-   - **GNG-Tで使用**
+GNG はノードやエッジの追加・削除を行うが、必ずしも Delaunay 三角形分割を完全には行えない（交差するエッジが発生する可能性がある）。
 
-### CHL vs 明示的Delaunay
+### GNG-T の位置づけ
 
-| 特性 | CHL (標準GNG) | 明示的Delaunay (GNG-T) |
-|-----|--------------|----------------------|
-| エッジ決定 | データ駆動 | 幾何学駆動 |
-| 計算量 | O(1) per step | O(n log n) per update |
-| トポロジー | 誘導Delaunay（近似） | 厳密Delaunay |
-| データがない領域 | エッジなし | エッジあり（凸包内） |
-| エッジaging | あり (max_age) | なし |
+GNG-T は、GNG の柔軟性（ノード/エッジの追加・削除）を維持しながら、ヒューリスティックな三角形分割探索により交差エッジを除去し、より適切なメッシュ構造を維持する。
 
 ## アルゴリズム
 
-### 標準GNGとの違い
+### 初期化
 
-1. **エッジ管理の変更**
-   - CHL による勝者-次点間エッジ作成を廃止
-   - scipy.spatial.Delaunay で三角形分割を計算
-   - max_age パラメータ不要
+GCS と同様に、2次元単体（3ノードの三角形）から開始する。
 
-2. **トポロジー更新タイミング**
-   - `update_topology_every` 回ごとに再計算
-   - ノード追加時にも強制更新
+### 主要ステップ
 
-3. **近傍の定義**
-   - 標準GNG: エッジで接続されたノード
-   - GNG-T: Delaunay 三角形で隣接するノード
+1-7: 標準GNGと同じ
+- Step 1: 入力データ v を取得
+- Step 2: 勝者ノード s1 と第2勝者ノード s2 を選択
+- Step 3: 勝者の積算誤差を更新
+- Step 4: 勝者と近傍ノードの参照ベクトルを更新
+- Step 5: s1-s2 間にエッジを作成/リセット
+- Step 6: s1 に接続するエッジの年齢をインクリメント
+- Step 7: max_age を超えるエッジを削除（孤立ノードも削除）
 
-### 学習アルゴリズム
+8: ノード追加（λ回ごと）
+- 最大誤差ノード q を選択
+- q の近傍で最大誤差ノード f を選択
+- q-f 間に新ノード r を挿入
+- q と f に共通して接続するノードとも接続（GCS方式）
+
+9: **三角形分割探索（GNG-T固有）**
+- 四角形探索
+- 交差点探索
+
+### 四角形探索（Section 2.5.1）
+
+対角線を持たない四角形を探索し、短い方の対角線を追加する。
 
 ```
-1. 入力信号 ξ に対して:
-   - 最近傍ノード（勝者）を見つける
-   - 勝者のエラーを増加: error += ||ξ - w_winner||²
-   - 勝者を入力方向に移動: w += ε_b * (ξ - w)
-   - Delaunay近傍も移動: w_n += ε_n * (ξ - w_n)
+1. 任意の頂点 A を選択
+2. A と結合関係のある2つのノード B, C を選択（B-C 間にエッジなし）
+3. B と C に共通して結合関係のあるノード D を探索（A-D 間にエッジなし）
+4. A-B-D-C が四角形候補
+5. 四角形内部に他のノードがないことを確認
+6. 対角線 AD と BC の距離を比較し、短い方を追加
+```
 
-2. update_topology_every 回ごとに:
-   - Delaunay三角形分割を再計算
-   - エッジと近傍リストを更新
+### 交差点探索（Section 2.5.2）
 
-3. λ 回ごとに:
-   - 最大エラーノード q を見つける
-   - q の近傍で最大エラーの f を見つける
-   - q と f の中間に新ノードを挿入
-   - トポロジーを強制更新
+エッジの交差を検出し、長い方のエッジを削除する。
+
+```
+1. すべてのエッジペアについて交差を判定
+2. 線分 BD と CE の交差判定:
+   γ1 = (xC - xE)(yD - yC) + (yC - yE)(xC - xD)
+   γ2 = (xC - xE)(yB - yC) + (yC - yE)(xC - xB)
+3. γ1 * γ2 ≤ 0 なら交差
+4. 長い方のエッジを削除
 ```
 
 ## パラメータ
@@ -73,88 +83,89 @@ GNG-T は標準GNGの Competitive Hebbian Learning (CHL) を明示的な Delauna
 |-----------|------|--------|
 | max_nodes | 最大ノード数 | 100 |
 | λ (lambda_) | ノード挿入間隔 | 100 |
-| ε_b (eps_b) | 勝者の学習率 | 0.05 |
-| ε_n (eps_n) | 近傍の学習率 | 0.006 |
+| ε_b (eps_b) | 勝者の学習率 | 0.08 |
+| ε_n (eps_n) | 近傍の学習率 | 0.008 |
 | α (alpha) | エラー減衰（挿入時） | 0.5 |
-| β (beta) | エラー減衰（毎ステップ） | 0.0005 |
-| update_topology_every | 三角形分割更新間隔 | 10 |
+| β (beta) | エラー減衰（毎ステップ） | 0.005 |
+| max_age | 最大エッジ年齢 | 100 |
 
-### パラメータ調整のヒント
+### トラッキング用パラメータ
 
-- **update_topology_every**:
-  - 小さい値 → 正確なトポロジー、高い計算コスト
-  - 大きい値 → 効率的だがトポロジーが遅延
-  - トラッキング用途: 5-10
-  - 静的分布: 10-50
+| パラメータ | 値 |
+|-----------|-----|
+| max_nodes | 50 |
+| λ | 20 |
+| ε_b | 0.15 |
+| ε_n | 0.01 |
+| β | 0.01 |
+| max_age | 30 |
+
+## GNG, GCS, GNG-D との比較
+
+| 特性 | GNG | GCS | GNG-T | GNG-D |
+|-----|-----|-----|-------|-------|
+| ノード追加 | ✓ | ✓ | ✓ | ✓ |
+| ノード削除 | ✓ | - | ✓ | - |
+| エッジ削除 | ✓ (max_age) | - | ✓ | - |
+| 三角形分割 | 近似 | 厳密 | ヒューリスティック | 厳密 |
+| 初期化 | 2ノード | 3ノード | 3ノード | 2ノード |
+| 計算コスト | 低 | 低 | 中 | 高 |
+
+## シミュレーション結果（論文より）
+
+3つのリング状データ分布での比較（50000回学習）:
+
+| アルゴリズム | 計算時間 [ms] | ノード数 | エッジ数 |
+|-------------|--------------|---------|---------|
+| NG | 11400 | 135 | 264 |
+| GCS | 1200 | 136 | 407 |
+| GNG | 3900 | 135 | 261 |
+| GNG-T | 5400 | 135 | 284 |
+
+GNG-T は GNG より計算時間が長いが、GCS より短く、適切な三角形分割を行える。
 
 ## 利点
 
-1. **厳密な三角形メッシュ**
-   - 交差するエッジがない
-   - 正しい三角形構造を保証
+1. **クラスタ分離が可能**
+   - GCS と異なり、複数のクラスタに分割可能
+   - エッジとノードの削除機能を保持
 
-2. **サーフェス再構築に最適**
-   - 3Dスキャンデータの処理
-   - メッシュ生成の前処理
+2. **交差エッジの除去**
+   - 交差点探索により不正なエッジを削除
+   - より適切なメッシュ構造
 
-3. **可視化が美しい**
-   - 三角形を塗りつぶして表示可能
-   - Voronoi図との双対関係を活用可能
+3. **GCS より高速**
+   - Delaunay の完全再計算を行わない
+   - ヒューリスティックな探索で効率的
 
 ## 欠点
 
-1. **計算コストが高い**
-   - Delaunay計算は O(n log n)
-   - 大量ノードで遅くなる
+1. **GNG より計算コストが高い**
+   - 四角形探索・交差点探索のオーバーヘッド
 
-2. **データがない領域にもエッジ**
-   - 凸包内全体に三角形ができる
-   - 穴がある分布では不適切なエッジが発生
+2. **厳密な Delaunay ではない**
+   - ヒューリスティックなため、一部の四角形や交差を見逃す可能性
 
-3. **2次元以上が必要**
-   - 1次元データには使用不可
-   - scipy.spatial.Delaunay の制約
+3. **データの偏りに敏感**
+   - ノイズの影響で不正な三角形分割が発生する可能性
 
-## 使用場面
+## 適用例
 
-### 適している
-- メッシュ生成・サーフェス再構築
-- 厳密な三角形構造が必要な場合
-- 可視化で三角形を表示したい場合
-- 凸形状のデータ
-
-### 適していない
-- 穴がある分布（リング、ドーナツ形状）
-- 高次元データ
-- リアルタイム処理（計算コスト）
-- 1次元データ
-
-## 実装の注意点
-
-### Delaunay計算の失敗
-
-点が共線（同一直線上）の場合、Delaunay計算が失敗する可能性がある。
-フォールバックとして最近傍接続を実装している。
-
-```python
-try:
-    tri = Delaunay(positions)
-except Exception:
-    self._fallback_connect_nearest(active_ids)
-```
-
-### 凸包外のノード
-
-Delaunay三角形分割は凸包内のみを対象とする。
-凸包外のノードは近傍に含まれない可能性がある。
+- 3次元サーフェスモデルの再構築
+- メッシュ生成
+- ロボットビジョン
+- リアルタイム追跡
 
 ## 参考文献
 
-1. Martinetz, T. & Schulten, K. (1994). "Topology representing networks"
-   Neural Networks, 7(3), 507-522.
+1. Kubota, N. & Satomi, M. (2008). "Growing Neural Gas with Triangulation for reconstructing a 3D surface model"
+   World Automation Congress.
 
-2. Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies"
+2. 久保田直行, 里見将志 (2008). "自己増殖型ニューラルネットワークと教師無し分類学習"
+   システム/制御/情報, Vol.52, No.11, pp.421-428.
+
+3. Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies"
    Advances in Neural Information Processing Systems 7.
 
-3. scipy.spatial.Delaunay ドキュメント
-   https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Delaunay.html
+4. Fritzke, B. (1994). "Growing cell structures - a self-organizing network"
+   Artificial Neural Networks, Vol.2, No.2.

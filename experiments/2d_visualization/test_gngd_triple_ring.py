@@ -1,7 +1,7 @@
-"""Test GNG-T (Triangulation) learning on triple ring pattern.
+"""Test GNG-D (explicit Delaunay Triangulation) learning on triple ring pattern.
 
-GNG-T uses heuristic triangulation (quadrilateral search + intersection search)
-based on Kubota & Satomi (2008) to maintain proper triangle mesh structure.
+GNG-D uses explicit scipy.spatial.Delaunay triangulation instead of Competitive
+Hebbian Learning for topology management.
 """
 
 import argparse
@@ -13,10 +13,10 @@ import numpy as np
 from PIL import Image
 
 # Add paths for imports
-sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gng_t" / "python"))
+sys.path.insert(0, str(Path(__file__).parents[2] / "algorithms" / "gng_d" / "python"))
 sys.path.insert(0, str(Path(__file__).parents[2] / "data" / "2d"))
 
-from model import GrowingNeuralGasT, GNGTParams
+from model import GrowingNeuralGasD, GNGDParams
 from sampler import sample_from_image
 
 
@@ -39,14 +39,14 @@ def create_visualization_frame(
     # Plot sample points
     ax.scatter(points[:, 0], points[:, 1], c="skyblue", s=3, alpha=0.3)
 
-    # Draw triangles (filled)
+    # Draw Delaunay triangles (filled)
     if show_triangles and triangles:
         for tri in triangles:
             triangle = plt.Polygon(
                 nodes[list(tri)],
                 fill=True,
-                facecolor="lightgreen",
-                edgecolor="green",
+                facecolor="yellow",
+                edgecolor="orange",
                 alpha=0.2,
                 linewidth=0.5,
             )
@@ -68,7 +68,7 @@ def create_visualization_frame(
     ax.set_xlim(0, 1)
     ax.set_ylim(1, 0)
     ax.set_aspect("equal")
-    ax.set_title(f"GNG-T (Triangulation) - Iter {iteration} ({len(nodes)} nodes, {len(edges)} edges)")
+    ax.set_title(f"GNG-D (Delaunay) - Iter {iteration} ({len(nodes)} nodes, {len(edges)} edges)")
 
 
 def run_experiment(
@@ -76,12 +76,12 @@ def run_experiment(
     n_frames: int = 50,
     n_samples: int = 1500,
     image_path: str = "triple_ring.png",
-    output_gif: str = "gngt_triple_ring_growth.gif",
-    output_png: str = "gngt_triple_ring_final.png",
+    output_gif: str = "gngd_triple_ring_growth.gif",
+    output_png: str = "gngd_triple_ring_final.png",
     seed: int = 42,
     show_triangles: bool = True,
 ) -> None:
-    """Run GNG-T triple ring experiment."""
+    """Run GNG-D triple ring experiment."""
     # Load and sample from image
     print(f"Sampling {n_samples} points from {image_path}...")
 
@@ -89,20 +89,20 @@ def run_experiment(
     points = sample_from_image(image_path, n_samples=n_samples, seed=seed)
     print(f"Sampled {len(points)} points")
 
-    # Setup GNG-T
-    params = GNGTParams(
+    # Setup GNG-D
+    params = GNGDParams(
         max_nodes=100,
         lambda_=100,
-        eps_b=0.08,
-        eps_n=0.008,
+        eps_b=0.05,
+        eps_n=0.006,
         alpha=0.5,
-        beta=0.005,
-        max_age=100,
+        beta=0.0005,
+        update_topology_every=10,  # Update Delaunay every 10 iterations
     )
-    gng_t = GrowingNeuralGasT(n_dim=2, params=params, seed=seed)
+    gng_d = GrowingNeuralGasD(n_dim=2, params=params, seed=seed)
 
-    print(f"Training GNG-T for {n_iterations} iterations...")
-    print(f"Parameters: lambda={params.lambda_}, eps_b={params.eps_b}, max_age={params.max_age}")
+    print(f"Training GNG-D for {n_iterations} iterations...")
+    print(f"Parameters: lambda={params.lambda_}, eps_b={params.eps_b}, update_every={params.update_topology_every}")
 
     # Create figure for animation
     fig, ax = plt.subplots(figsize=(8, 8), facecolor="white")
@@ -128,12 +128,12 @@ def run_experiment(
             frames.append(img.convert("RGB"))
 
     # Train
-    gng_t.train(points, n_iterations=n_iterations, callback=callback)
+    gng_d.train(points, n_iterations=n_iterations, callback=callback)
 
     # Final frame
-    nodes, edges = gng_t.get_graph()
-    triangles = gng_t.get_triangles() if show_triangles else None
-    print(f"Iteration {n_iterations - 1}: {gng_t.n_nodes} nodes, {gng_t.n_edges} edges")
+    nodes, edges = gng_d.get_graph()
+    triangles = gng_d.get_triangles() if show_triangles else None
+    print(f"Iteration {n_iterations - 1}: {gng_d.n_nodes} nodes, {gng_d.n_edges} edges")
 
     create_visualization_frame(
         ax, points, nodes, edges, triangles, n_iterations, bg_image, show_triangles
@@ -158,7 +158,7 @@ def run_experiment(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Test GNG-T on triple ring")
+    parser = argparse.ArgumentParser(description="Test GNG-D on triple ring")
     parser.add_argument("--iterations", type=int, default=5000)
     parser.add_argument("--frames", type=int, default=50)
     parser.add_argument("--samples", type=int, default=1500)
