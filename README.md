@@ -39,9 +39,9 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 非定常分布に対応。Utility（有用度）が低いノードを削除し、分布変化に追従。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![GNG-U Triple Ring](experiments/2d_visualization/samples/gng_u/python/triple_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![GNG-U Python](experiments/2d_visualization/samples/gng_u/python/triple_ring_growth.gif) | ![GNG-U C++](experiments/2d_visualization/samples/gng_u/cpp/triple_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
 
 ### GNG-T (GNG with Triangulation)
 
@@ -63,49 +63,49 @@ scipy.spatial.Delaunay による明示的な三角形分割でトポロジーを
 
 固定グリッド構造でトポロジーを保存。近傍関数がガウシアンで周辺ノードも同時に更新。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![SOM Triple Ring](experiments/2d_visualization/samples/som/python/triple_ring_growth.gif) | ![SOM Tracking](experiments/2d_visualization/samples/som/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![SOM Python](experiments/2d_visualization/samples/som/python/triple_ring_growth.gif) | ![SOM C++](experiments/2d_visualization/samples/som/cpp/triple_ring_growth.gif) | ![SOM Tracking](experiments/2d_visualization/samples/som/python/tracking.gif) |
 
 ### Neural Gas
 
 ランクベースの近傍関数で全ノードを更新。CHL（Competitive Hebbian Learning）でエッジを学習。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![NG Triple Ring](experiments/2d_visualization/samples/neural_gas/python/triple_ring_growth.gif) | ![NG Tracking](experiments/2d_visualization/samples/neural_gas/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![NG Python](experiments/2d_visualization/samples/neural_gas/python/triple_ring_growth.gif) | ![NG C++](experiments/2d_visualization/samples/neural_gas/cpp/triple_ring_growth.gif) | ![NG Tracking](experiments/2d_visualization/samples/neural_gas/python/tracking.gif) |
 
 ### GCS (Growing Cell Structures)
 
 三角メッシュ構造を維持しながら成長。常に単体複体（simplicial complex）を保持。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![GCS Triple Ring](experiments/2d_visualization/samples/gcs/python/triple_ring_growth.gif) | ![GCS Tracking](experiments/2d_visualization/samples/gcs/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![GCS Python](experiments/2d_visualization/samples/gcs/python/triple_ring_growth.gif) | ![GCS C++](experiments/2d_visualization/samples/gcs/cpp/triple_ring_growth.gif) | ![GCS Tracking](experiments/2d_visualization/samples/gcs/python/tracking.gif) |
 
 ### HCL (Hard Competitive Learning)
 
 最もシンプルな競合学習。勝者ノードのみを更新（Winner-Take-All）。トポロジー学習なし。
 
-| トリプルリング |
-|:-------------:|
-| ![HCL Triple Ring](experiments/2d_visualization/samples/hcl/python/triple_ring_growth.gif) |
+| Python | C++ |
+|:------:|:---:|
+| ![HCL Python](experiments/2d_visualization/samples/hcl/python/triple_ring_growth.gif) | ![HCL C++](experiments/2d_visualization/samples/hcl/cpp/triple_ring_growth.gif) |
 
 ### LBG (Linde-Buzo-Gray)
 
 バッチ学習ベースのベクトル量子化。各エポックで全データを処理し重心を計算。
 
-| トリプルリング |
-|:-------------:|
-| ![LBG Triple Ring](experiments/2d_visualization/samples/lbg/python/triple_ring_growth.gif) |
+| Python | C++ |
+|:------:|:---:|
+| ![LBG Python](experiments/2d_visualization/samples/lbg/python/triple_ring_growth.gif) | ![LBG C++](experiments/2d_visualization/samples/lbg/cpp/triple_ring_growth.gif) |
 
 ### Growing Grid
 
 自己成長するグリッド構造。高エラー領域の境界に行/列を追加。
 
-| トリプルリング |
-|:-------------:|
-| ![GG Triple Ring](experiments/2d_visualization/samples/growing_grid/python/triple_ring_growth.gif) |
+| Python | C++ |
+|:------:|:---:|
+| ![GG Python](experiments/2d_visualization/samples/growing_grid/python/triple_ring_growth.gif) | ![GG C++](experiments/2d_visualization/samples/growing_grid/cpp/triple_ring_growth.gif) |
 
 ## 対応言語
 
@@ -144,15 +144,15 @@ gng_collection/
 | アルゴリズム | Python | C++ | 説明 |
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | Growing Neural Gas - 動的トポロジー学習 |
-| GNG-U       | ✓      | -   | GNG with Utility - 非定常分布対応 |
+| GNG-U       | ✓      | ✓   | GNG with Utility - 非定常分布対応 |
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
-| GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割 |
-| SOM         | ✓      | -   | Self-Organizing Map - 固定グリッド |
-| Neural Gas  | ✓      | -   | ランクベース競合学習 |
-| GCS         | ✓      | -   | Growing Cell Structures - メッシュ構造 |
-| HCL         | ✓      | -   | Hard Competitive Learning - 勝者のみ更新 |
-| LBG         | ✓      | -   | Linde-Buzo-Gray - バッチベクトル量子化 |
-| Growing Grid| ✓      | -   | 自己成長グリッド構造 |
+| GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
+| SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
+| Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
+| GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
+| HCL         | ✓      | ✓   | Hard Competitive Learning - 勝者のみ更新 |
+| LBG         | ✓      | ✓   | Linde-Buzo-Gray - バッチベクトル量子化 |
+| Growing Grid| ✓      | ✓   | 自己成長グリッド構造 |
 
 ## 計算時間
 
