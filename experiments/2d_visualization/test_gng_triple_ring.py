@@ -169,9 +169,9 @@ if __name__ == "__main__":
         "--iterations", type=int, default=5000, help="Number of training iterations"
     )
     parser.add_argument("--frames", type=int, default=100, help="Number of GIF frames")
-    parser.add_argument("--output-gif", type=str, default="gng_triple_ring_growth.gif", help="Output GIF path")
+    parser.add_argument("--output-gif", type=str, default="triple_ring_growth.gif", help="Output GIF path")
     parser.add_argument(
-        "--output-final", type=str, default="gng_triple_ring_final.png", help="Output final image path"
+        "--output-final", type=str, default="triple_ring_final.png", help="Output final image path"
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
 

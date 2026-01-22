@@ -152,8 +152,8 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--n-samples", type=int, default=1500)
     parser.add_argument("--iterations", type=int, default=5000)
     parser.add_argument("--frames", type=int, default=100)
-    parser.add_argument("--output-gif", type=str, default="gg_triple_ring_growth.gif")
-    parser.add_argument("--output-final", type=str, default="gg_triple_ring_final.png")
+    parser.add_argument("--output-gif", type=str, default="triple_ring_growth.gif")
+    parser.add_argument("--output-final", type=str, default="triple_ring_final.png")
     parser.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args()
