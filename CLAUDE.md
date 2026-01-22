@@ -158,15 +158,40 @@ git add -f experiments/2d_visualization/samples/
 | アルゴリズム | Python | C++ | 説明 |
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | 標準 Growing Neural Gas |
+| GNG (Kubota)| ✓      | -   | Kubota論文準拠版（最長エッジ方式） |
 | GNG-U       | ✓      | ✓   | Utility付きGNG（非定常分布対応） |
 | GNG-T       | ✓      | ✓   | ヒューリスティック三角形分割（Kubota 2008） |
+| GNG-T (Kubota)| ✓    | -   | Kubota論文完全準拠版（γ式使用） |
 | GNG-D       | ✓      | -   | 明示的Delaunay三角形分割（scipy.spatial） |
 | SOM         | ✓      | ✓   | Self-Organizing Map |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures |
+| GCS (Kubota)| ✓      | -   | Kubota論文準拠版（最長エッジ方式） |
 | HCL         | ✓      | ✓   | Hard Competitive Learning（勝者のみ更新） |
 | LBG         | ✓      | ✓   | Linde-Buzo-Gray（バッチ学習） |
 | Growing Grid| ✓      | ✓   | 自己成長グリッド |
+
+### 実装バリアント
+
+GNG, GCS, GNG-Tには2つのバリアントがあります：
+
+1. **demogng版** (`model.py`)
+   - demogng.de等の参照実装に基づく
+   - ノード挿入時に「最大誤差の隣接ノード」を選択
+   - 実用的で高速
+
+2. **Kubota論文版** (`model_kubota.py`)
+   - Kubota & Satomi (2008) に完全準拠
+   - ノード挿入時に「最長エッジの隣接ノード」を選択
+   - GNG-Tでは交差判定にγ式を使用
+
+```python
+# demogng版
+from algorithms.gng.python.model import GrowingNeuralGas
+
+# Kubota論文版
+from algorithms.gng.python.model_kubota import GrowingNeuralGasKubota
+```
 
 ## よく使うコマンド
 
