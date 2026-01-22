@@ -158,15 +158,15 @@ git add -f experiments/2d_visualization/samples/
 | アルゴリズム | Python | C++ | 説明 |
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | 標準 Growing Neural Gas |
-| GNG-U       | ✓      | -   | Utility付きGNG（非定常分布対応） |
+| GNG-U       | ✓      | ✓   | Utility付きGNG（非定常分布対応） |
 | GNG-T       | ✓      | ✓   | ヒューリスティック三角形分割（Kubota 2008） |
 | GNG-D       | ✓      | -   | 明示的Delaunay三角形分割（scipy.spatial） |
-| SOM         | ✓      | -   | Self-Organizing Map |
-| Neural Gas  | ✓      | -   | ランクベース競合学習 |
-| GCS         | ✓      | -   | Growing Cell Structures |
-| HCL         | ✓      | -   | Hard Competitive Learning（勝者のみ更新） |
-| LBG         | ✓      | -   | Linde-Buzo-Gray（バッチ学習） |
-| Growing Grid| ✓      | -   | 自己成長グリッド |
+| SOM         | ✓      | ✓   | Self-Organizing Map |
+| Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
+| GCS         | ✓      | ✓   | Growing Cell Structures |
+| HCL         | ✓      | ✓   | Hard Competitive Learning（勝者のみ更新） |
+| LBG         | ✓      | ✓   | Linde-Buzo-Gray（バッチ学習） |
+| Growing Grid| ✓      | ✓   | 自己成長グリッド |
 
 ## よく使うコマンド
 
