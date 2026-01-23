@@ -66,3 +66,13 @@ target_link_libraries(test_lbg_triple_ring Eigen3::Eigen)
 # Growing Grid Triple ring test
 add_executable(test_gg_triple_ring test_gg_triple_ring.cpp)
 target_link_libraries(test_gg_triple_ring Eigen3::Eigen)
+
+# Kubota variant tests
+add_executable(test_gng_kubota_triple_ring test_gng_kubota_triple_ring.cpp)
+target_link_libraries(test_gng_kubota_triple_ring Eigen3::Eigen)
+
+add_executable(test_gcs_kubota_triple_ring test_gcs_kubota_triple_ring.cpp)
+target_link_libraries(test_gcs_kubota_triple_ring Eigen3::Eigen)
+
+add_executable(test_gngt_kubota_triple_ring test_gngt_kubota_triple_ring.cpp)
+target_link_libraries(test_gngt_kubota_triple_ring Eigen3::Eigen)
