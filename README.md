@@ -347,46 +347,25 @@ python test_gng_trajectory.py
 
 ## 実装バリアント
 
-GCS、GNG、GNG-T には2つの実装バリアントがあります：
+GNG, GCS, GNG-T には2つの実装バリアントがあります：
 
-| バリアント | ファイル | ノード挿入時のf選択 | 交差判定 |
-|-----------|---------|-------------------|---------|
-| demogng準拠 | `model.py` | 最大エラー近傍 | CCW法 |
-| Kubotalab準拠 | `model_kubota.py` | 最長エッジ近傍 | γ式 |
+| バリアント | ファイル | 特徴 | 適したケース |
+|-----------|---------|------|-------------|
+| demogng準拠 | `model.py` | 誤差ベース・適応的 | 不均一密度データ、既存実装との互換性 |
+| Kubotalab準拠 | `model_kubota.py` | 幾何学ベース・均等 | メッシュ品質重視、論文再現 |
 
-### 違いの詳細
+**主な違い**: ノード挿入時の隣接ノード選択方法
+- **demogng版**: 最大エラー近傍を選択 → データ密度に適応的
+- **Kubotalab版**: 最長エッジ近傍を選択 → 均等なノード配置
 
-**ノード挿入（Step 8.ii / Step 5.ii）**:
-- **demogng版**: 最大誤差ノードqの近傍で「最大エラー」を持つノードfを選択
-- **Kubotalab版**: 最大誤差ノードqの近傍で「最長エッジ」で接続されたノードfを選択
-
-**交差判定（GNG-Tのみ）**:
-- **demogng版**: CCW（Counter-Clockwise）法
-- **Kubotalab版**: 論文のγ式（Section 2.5.2）
+詳細は [references/notes/variant_comparison.md](references/notes/variant_comparison.md) を参照してください。
 
 ### Kubotalab版の使用例
 
 ```python
-# GNG (Kubota paper-compliant)
 from algorithms.gng.python.model_kubota import GNGKubota, GNGKubotaParams
-
-params = GNGKubotaParams(max_nodes=50, lambda_=100)
-gng = GNGKubota(n_dim=2, params=params)
-gng.train(X, n_iterations=5000)
-
-# GCS (Kubota paper-compliant)
 from algorithms.gcs.python.model_kubota import GCSKubota, GCSKubotaParams
-
-params = GCSKubotaParams(max_nodes=50, lambda_=100)
-gcs = GCSKubota(n_dim=2, params=params)
-gcs.train(X, n_iterations=5000)
-
-# GNG-T (Kubota paper-compliant)
 from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
-
-params = GNGTKubotaParams(max_nodes=50, lambda_=100)
-gng_t = GNGTKubota(n_dim=2, params=params)
-gng_t.train(X, n_iterations=5000)
 ```
 
 ### Kubotalab版の可視化サンプル
