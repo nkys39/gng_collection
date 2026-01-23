@@ -1,9 +1,12 @@
 """Generate comparison GIFs for utility tracking experiments.
 
 Creates side-by-side GIF animations comparing:
-1. Distance metrics: Squared (k=1.3) vs Euclidean (k=50)
-2. utility_k sweep for squared distance
-3. utility_k sweep for euclidean distance
+1. Distance metrics comparison (GNG-U Squared vs Euclidean)
+2. GNG-U utility_k sweep (squared and euclidean)
+3. GNG-U2 utility_k sweep (squared and euclidean)
+4. AiS-GNG utility_k sweep (squared and euclidean)
+5. Algorithm comparison at Squared k=1.3 (GNG-U vs GNG-U2 vs AiS-GNG)
+6. Algorithm comparison at Euclidean k=50 (GNG-U vs GNG-U2 vs AiS-GNG)
 
 Usage:
     python generate_comparison_gifs.py
@@ -33,13 +36,35 @@ def load_module_from_path(module_name: str, file_path: Path):
 _models_dir = Path(__file__).parent / "models"
 _algo_dir = Path(__file__).parents[2] / "algorithms"
 
-_gngu_euclidean_mod = load_module_from_path("gngu_euclidean", _models_dir / "gngu_euclidean.py")
+# GNG-U (original squared distance)
 _gngu_mod = load_module_from_path("gngu_model", _algo_dir / "gng_u" / "python" / "model.py")
-
-GNGUEuclidean = _gngu_euclidean_mod.GNGUEuclidean
-GNGUEuclideanParams = _gngu_euclidean_mod.GNGUEuclideanParams
 GrowingNeuralGasU = _gngu_mod.GrowingNeuralGasU
 GNGUParams = _gngu_mod.GNGUParams
+
+# GNG-U Euclidean (comparison variant)
+_gngu_euclidean_mod = load_module_from_path("gngu_euclidean", _models_dir / "gngu_euclidean.py")
+GNGUEuclidean = _gngu_euclidean_mod.GNGUEuclidean
+GNGUEuclideanParams = _gngu_euclidean_mod.GNGUEuclideanParams
+
+# GNG-U2 (original Euclidean distance)
+_gngu2_mod = load_module_from_path("gngu2_model", _algo_dir / "gng_u2" / "python" / "model.py")
+GNGU2 = _gngu2_mod.GNGU2
+GNGU2Params = _gngu2_mod.GNGU2Params
+
+# GNG-U2 Squared (comparison variant)
+_gngu2_squared_mod = load_module_from_path("gngu2_squared", _models_dir / "gngu2_squared.py")
+GNGU2Squared = _gngu2_squared_mod.GNGU2Squared
+GNGU2SquaredParams = _gngu2_squared_mod.GNGU2SquaredParams
+
+# AiS-GNG (original Euclidean distance)
+_aisgng_mod = load_module_from_path("aisgng_model", _algo_dir / "ais_gng" / "python" / "model.py")
+AiSGNG = _aisgng_mod.AiSGNG
+AiSGNGParams = _aisgng_mod.AiSGNGParams
+
+# AiS-GNG Squared (comparison variant)
+_aisgng_squared_mod = load_module_from_path("aisgng_squared", _models_dir / "aisgng_squared.py")
+AiSGNGSquared = _aisgng_squared_mod.AiSGNGSquared
+AiSGNGSquaredParams = _aisgng_squared_mod.AiSGNGSquaredParams
 
 
 @dataclass
@@ -224,7 +249,7 @@ def main():
 
     config = TrackingConfig()
 
-    # Common parameters
+    # Common parameters for squared distance models (GNG-U style)
     common_squared = {
         "max_nodes": 50,
         "lambda_": 20,
@@ -235,15 +260,34 @@ def main():
         "max_age": 30,
     }
 
+    # Common parameters for Euclidean distance models (GNG-U2/AiS-GNG style)
     common_euclidean = {
         **common_squared,
         "chi": 0.01,
         "kappa": 10,
     }
 
-    # 1. Distance metric comparison (best k for each)
+    # AiS-GNG specific parameters (squared distance)
+    common_aisgng_squared = {
+        **common_squared,
+        "chi": 0.01,
+        "kappa": 10,
+        "theta_ais_min_sq": 0.0009,  # 0.03^2
+        "theta_ais_max_sq": 0.0225,  # 0.15^2
+    }
+
+    # AiS-GNG specific parameters (Euclidean distance)
+    common_aisgng_euclidean = {
+        **common_euclidean,
+        "theta_ais_min": 0.03,
+        "theta_ais_max": 0.15,
+    }
+
+    # ===================================================================
+    # 1. GNG-U: Distance metric comparison
+    # ===================================================================
     print("\n" + "=" * 60)
-    print("1. Distance Metric Comparison")
+    print("1. GNG-U: Distance Metric Comparison")
     print("=" * 60)
     generate_comparison_gif(
         [
@@ -251,40 +295,150 @@ def main():
             ("GNG-U Euclidean (k=50)", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=50)),
         ],
         config,
-        str(output_dir / "distance_metric_comparison.gif"),
+        str(output_dir / "gngu_distance_metric_comparison.gif"),
         ncols=2,
     )
 
-    # 2. Squared distance utility_k comparison
+    # ===================================================================
+    # 2. GNG-U: Squared distance utility_k comparison
+    # ===================================================================
     print("\n" + "=" * 60)
-    print("2. Squared Distance - utility_k Comparison")
+    print("2. GNG-U: Squared Distance - utility_k Comparison")
     print("=" * 60)
     generate_comparison_gif(
         [
-            ("Squared k=0.5", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=0.5)),
-            ("Squared k=1.3", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=1.3)),
-            ("Squared k=5.0", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=5.0)),
-            ("Squared k=20.0", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=20.0)),
+            ("GNG-U Sq k=0.5", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=0.5)),
+            ("GNG-U Sq k=1.3", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=1.3)),
+            ("GNG-U Sq k=5.0", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=5.0)),
+            ("GNG-U Sq k=20.0", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=20.0)),
         ],
         config,
-        str(output_dir / "squared_utility_k_comparison.gif"),
+        str(output_dir / "gngu_squared_utility_k.gif"),
         ncols=2,
     )
 
-    # 3. Euclidean distance utility_k comparison
+    # ===================================================================
+    # 3. GNG-U: Euclidean distance utility_k comparison
+    # ===================================================================
     print("\n" + "=" * 60)
-    print("3. Euclidean Distance - utility_k Comparison")
+    print("3. GNG-U: Euclidean Distance - utility_k Comparison")
     print("=" * 60)
     generate_comparison_gif(
         [
-            ("Euclidean k=20", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=20)),
-            ("Euclidean k=50", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=50)),
-            ("Euclidean k=100", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=100)),
-            ("Euclidean k=500", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=500)),
+            ("GNG-U Euc k=20", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=20)),
+            ("GNG-U Euc k=50", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=50)),
+            ("GNG-U Euc k=100", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=100)),
+            ("GNG-U Euc k=500", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=500)),
         ],
         config,
-        str(output_dir / "euclidean_utility_k_comparison.gif"),
+        str(output_dir / "gngu_euclidean_utility_k.gif"),
         ncols=2,
+    )
+
+    # ===================================================================
+    # 4. GNG-U2: Squared distance utility_k comparison
+    # ===================================================================
+    print("\n" + "=" * 60)
+    print("4. GNG-U2: Squared Distance - utility_k Comparison")
+    print("=" * 60)
+    generate_comparison_gif(
+        [
+            ("GNG-U2 Sq k=0.5", GNGU2Squared, GNGU2SquaredParams(**common_euclidean, utility_k=0.5)),
+            ("GNG-U2 Sq k=1.3", GNGU2Squared, GNGU2SquaredParams(**common_euclidean, utility_k=1.3)),
+            ("GNG-U2 Sq k=5.0", GNGU2Squared, GNGU2SquaredParams(**common_euclidean, utility_k=5.0)),
+            ("GNG-U2 Sq k=20.0", GNGU2Squared, GNGU2SquaredParams(**common_euclidean, utility_k=20.0)),
+        ],
+        config,
+        str(output_dir / "gngu2_squared_utility_k.gif"),
+        ncols=2,
+    )
+
+    # ===================================================================
+    # 5. GNG-U2: Euclidean distance utility_k comparison
+    # ===================================================================
+    print("\n" + "=" * 60)
+    print("5. GNG-U2: Euclidean Distance - utility_k Comparison")
+    print("=" * 60)
+    generate_comparison_gif(
+        [
+            ("GNG-U2 Euc k=20", GNGU2, GNGU2Params(**common_euclidean, utility_k=20)),
+            ("GNG-U2 Euc k=50", GNGU2, GNGU2Params(**common_euclidean, utility_k=50)),
+            ("GNG-U2 Euc k=100", GNGU2, GNGU2Params(**common_euclidean, utility_k=100)),
+            ("GNG-U2 Euc k=500", GNGU2, GNGU2Params(**common_euclidean, utility_k=500)),
+        ],
+        config,
+        str(output_dir / "gngu2_euclidean_utility_k.gif"),
+        ncols=2,
+    )
+
+    # ===================================================================
+    # 6. AiS-GNG: Squared distance utility_k comparison
+    # ===================================================================
+    print("\n" + "=" * 60)
+    print("6. AiS-GNG: Squared Distance - utility_k Comparison")
+    print("=" * 60)
+    generate_comparison_gif(
+        [
+            ("AiS-GNG Sq k=0.5", AiSGNGSquared, AiSGNGSquaredParams(**common_aisgng_squared, utility_k=0.5)),
+            ("AiS-GNG Sq k=1.3", AiSGNGSquared, AiSGNGSquaredParams(**common_aisgng_squared, utility_k=1.3)),
+            ("AiS-GNG Sq k=5.0", AiSGNGSquared, AiSGNGSquaredParams(**common_aisgng_squared, utility_k=5.0)),
+            ("AiS-GNG Sq k=20.0", AiSGNGSquared, AiSGNGSquaredParams(**common_aisgng_squared, utility_k=20.0)),
+        ],
+        config,
+        str(output_dir / "aisgng_squared_utility_k.gif"),
+        ncols=2,
+    )
+
+    # ===================================================================
+    # 7. AiS-GNG: Euclidean distance utility_k comparison
+    # ===================================================================
+    print("\n" + "=" * 60)
+    print("7. AiS-GNG: Euclidean Distance - utility_k Comparison")
+    print("=" * 60)
+    generate_comparison_gif(
+        [
+            ("AiS-GNG Euc k=20", AiSGNG, AiSGNGParams(**common_aisgng_euclidean, utility_k=20)),
+            ("AiS-GNG Euc k=50", AiSGNG, AiSGNGParams(**common_aisgng_euclidean, utility_k=50)),
+            ("AiS-GNG Euc k=100", AiSGNG, AiSGNGParams(**common_aisgng_euclidean, utility_k=100)),
+            ("AiS-GNG Euc k=500", AiSGNG, AiSGNGParams(**common_aisgng_euclidean, utility_k=500)),
+        ],
+        config,
+        str(output_dir / "aisgng_euclidean_utility_k.gif"),
+        ncols=2,
+    )
+
+    # ===================================================================
+    # 8. Algorithm Comparison: Squared k=1.3
+    # ===================================================================
+    print("\n" + "=" * 60)
+    print("8. Algorithm Comparison: Squared Distance (k=1.3)")
+    print("=" * 60)
+    generate_comparison_gif(
+        [
+            ("GNG-U Sq k=1.3", GrowingNeuralGasU, GNGUParams(**common_squared, utility_k=1.3)),
+            ("GNG-U2 Sq k=1.3", GNGU2Squared, GNGU2SquaredParams(**common_euclidean, utility_k=1.3)),
+            ("AiS-GNG Sq k=1.3", AiSGNGSquared, AiSGNGSquaredParams(**common_aisgng_squared, utility_k=1.3)),
+        ],
+        config,
+        str(output_dir / "algorithm_comparison_squared_k1.3.gif"),
+        ncols=3,
+    )
+
+    # ===================================================================
+    # 9. Algorithm Comparison: Euclidean k=50
+    # ===================================================================
+    print("\n" + "=" * 60)
+    print("9. Algorithm Comparison: Euclidean Distance (k=50)")
+    print("=" * 60)
+    generate_comparison_gif(
+        [
+            ("GNG-U Euc k=50", GNGUEuclidean, GNGUEuclideanParams(**common_euclidean, utility_k=50)),
+            ("GNG-U2 Euc k=50", GNGU2, GNGU2Params(**common_euclidean, utility_k=50)),
+            ("AiS-GNG Euc k=50", AiSGNG, AiSGNGParams(**common_aisgng_euclidean, utility_k=50)),
+        ],
+        config,
+        str(output_dir / "algorithm_comparison_euclidean_k50.gif"),
+        ncols=3,
     )
 
     print("\n" + "=" * 60)
