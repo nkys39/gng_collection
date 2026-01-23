@@ -10,6 +10,7 @@ gng_collection/
 │   ├── _template/        # 新アルゴリズム用テンプレート
 │   ├── gng/              # 標準GNG
 │   ├── gng_u/            # GNG-U (Utility)
+│   ├── ais_gng/          # AiS-GNG (Add-if-Silent Rule)
 │   ├── gng_t/            # GNG-T (Triangulation - Kubota 2008)
 │   ├── gng_d/            # GNG-D (explicit Delaunay)
 │   ├── som/              # Self-Organizing Map
@@ -27,10 +28,11 @@ gng_collection/
 │       │   ├── gng/
 │       │   │   ├── python/
 │       │   │   └── cpp/
+│       │   ├── gng_u/
+│       │   ├── ais_gng/
 │       │   ├── gng_t/
 │       │   │   ├── python/
 │       │   │   └── cpp/
-│       │   ├── gng_u/
 │       │   ├── som/
 │       │   ├── neural_gas/
 │       │   └── gcs/
@@ -160,6 +162,7 @@ git add -f experiments/2d_visualization/samples/
 | GNG         | ✓      | ✓   | 標準 Growing Neural Gas |
 | GNG (Kubota)| ✓      | -   | Kubotalab論文準拠版（最長エッジ方式） |
 | GNG-U       | ✓      | ✓   | Utility付きGNG（非定常分布対応） |
+| AiS-GNG     | ✓      | -   | Add-if-Silentルール付きGNG（高密度位相構造の高速生成） |
 | GNG-T       | ✓      | ✓   | ヒューリスティック三角形分割（Kubota 2008） |
 | GNG-T (Kubota)| ✓    | -   | Kubotalab論文完全準拠版（γ式使用） |
 | GNG-D       | ✓      | -   | 明示的Delaunay三角形分割（scipy.spatial） |
@@ -202,6 +205,8 @@ python test_gng_triple_ring.py
 python test_gng_tracking.py
 python test_gngu_triple_ring.py
 python test_gngu_tracking.py
+python test_aisgng_triple_ring.py
+python test_aisgng_tracking.py
 python test_gngt_triple_ring.py
 python test_gngt_tracking.py
 python test_gngd_triple_ring.py
