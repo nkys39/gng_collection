@@ -389,6 +389,12 @@ gng_t = GNGTKubota(n_dim=2, params=params)
 gng_t.train(X, n_iterations=5000)
 ```
 
+### Kubota版の可視化サンプル
+
+| GNG Kubota | GCS Kubota | GNG-T Kubota |
+|:----------:|:----------:|:------------:|
+| ![GNG Kubota](experiments/2d_visualization/samples/gng_kubota/python/triple_ring_growth.gif) | ![GCS Kubota](experiments/2d_visualization/samples/gcs_kubota/python/triple_ring_growth.gif) | ![GNG-T Kubota](experiments/2d_visualization/samples/gng_t_kubota/python/triple_ring_growth.gif) |
+
 ## 参照元について
 
 各アルゴリズムの詳細は `references/notes/` を参照してください。
