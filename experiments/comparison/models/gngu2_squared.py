@@ -149,6 +149,10 @@ class GNGU2Squared:
         """Check and remove node with lowest utility if criterion met."""
         p = self.params
 
+        # Don't remove if only 2 nodes remain
+        if self.n_nodes <= 2:
+            return
+
         max_error = 0.0
         min_utility = float("inf")
         min_utility_id = -1
