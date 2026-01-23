@@ -391,9 +391,17 @@ gng_t.train(X, n_iterations=5000)
 
 ### Kubota版の可視化サンプル
 
+**トリプルリング（静的分布）**
+
 | GNG Kubota | GCS Kubota | GNG-T Kubota |
 |:----------:|:----------:|:------------:|
 | ![GNG Kubota](experiments/2d_visualization/samples/gng_kubota/python/triple_ring_growth.gif) | ![GCS Kubota](experiments/2d_visualization/samples/gcs_kubota/python/triple_ring_growth.gif) | ![GNG-T Kubota](experiments/2d_visualization/samples/gng_t_kubota/python/triple_ring_growth.gif) |
+
+**トラッキング（動的分布）**
+
+| GNG Kubota | GCS Kubota | GNG-T Kubota |
+|:----------:|:----------:|:------------:|
+| ![GNG Kubota Tracking](experiments/2d_visualization/samples/gng_kubota/python/tracking.gif) | ![GCS Kubota Tracking](experiments/2d_visualization/samples/gcs_kubota/python/tracking.gif) | ![GNG-T Kubota Tracking](experiments/2d_visualization/samples/gng_t_kubota/python/tracking.gif) |
 
 ## 参照元について
 
