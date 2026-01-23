@@ -39,9 +39,9 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 非定常分布に対応。Utility（有用度）が低いノードを削除し、分布変化に追従。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![GNG-U Triple Ring](experiments/2d_visualization/samples/gng_u/python/triple_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![GNG-U Python](experiments/2d_visualization/samples/gng_u/python/triple_ring_growth.gif) | ![GNG-U C++](experiments/2d_visualization/samples/gng_u/cpp/triple_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
 
 ### GNG-T (GNG with Triangulation)
 
@@ -63,49 +63,49 @@ scipy.spatial.Delaunay による明示的な三角形分割でトポロジーを
 
 固定グリッド構造でトポロジーを保存。近傍関数がガウシアンで周辺ノードも同時に更新。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![SOM Triple Ring](experiments/2d_visualization/samples/som/python/triple_ring_growth.gif) | ![SOM Tracking](experiments/2d_visualization/samples/som/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![SOM Python](experiments/2d_visualization/samples/som/python/triple_ring_growth.gif) | ![SOM C++](experiments/2d_visualization/samples/som/cpp/triple_ring_growth.gif) | ![SOM Tracking](experiments/2d_visualization/samples/som/python/tracking.gif) |
 
 ### Neural Gas
 
 ランクベースの近傍関数で全ノードを更新。CHL（Competitive Hebbian Learning）でエッジを学習。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![NG Triple Ring](experiments/2d_visualization/samples/neural_gas/python/triple_ring_growth.gif) | ![NG Tracking](experiments/2d_visualization/samples/neural_gas/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![NG Python](experiments/2d_visualization/samples/neural_gas/python/triple_ring_growth.gif) | ![NG C++](experiments/2d_visualization/samples/neural_gas/cpp/triple_ring_growth.gif) | ![NG Tracking](experiments/2d_visualization/samples/neural_gas/python/tracking.gif) |
 
 ### GCS (Growing Cell Structures)
 
 三角メッシュ構造を維持しながら成長。常に単体複体（simplicial complex）を保持。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![GCS Triple Ring](experiments/2d_visualization/samples/gcs/python/triple_ring_growth.gif) | ![GCS Tracking](experiments/2d_visualization/samples/gcs/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![GCS Python](experiments/2d_visualization/samples/gcs/python/triple_ring_growth.gif) | ![GCS C++](experiments/2d_visualization/samples/gcs/cpp/triple_ring_growth.gif) | ![GCS Tracking](experiments/2d_visualization/samples/gcs/python/tracking.gif) |
 
 ### HCL (Hard Competitive Learning)
 
 最もシンプルな競合学習。勝者ノードのみを更新（Winner-Take-All）。トポロジー学習なし。
 
-| トリプルリング |
-|:-------------:|
-| ![HCL Triple Ring](experiments/2d_visualization/samples/hcl/python/triple_ring_growth.gif) |
+| Python | C++ |
+|:------:|:---:|
+| ![HCL Python](experiments/2d_visualization/samples/hcl/python/triple_ring_growth.gif) | ![HCL C++](experiments/2d_visualization/samples/hcl/cpp/triple_ring_growth.gif) |
 
 ### LBG (Linde-Buzo-Gray)
 
 バッチ学習ベースのベクトル量子化。各エポックで全データを処理し重心を計算。
 
-| トリプルリング |
-|:-------------:|
-| ![LBG Triple Ring](experiments/2d_visualization/samples/lbg/python/triple_ring_growth.gif) |
+| Python | C++ |
+|:------:|:---:|
+| ![LBG Python](experiments/2d_visualization/samples/lbg/python/triple_ring_growth.gif) | ![LBG C++](experiments/2d_visualization/samples/lbg/cpp/triple_ring_growth.gif) |
 
 ### Growing Grid
 
 自己成長するグリッド構造。高エラー領域の境界に行/列を追加。
 
-| トリプルリング |
-|:-------------:|
-| ![GG Triple Ring](experiments/2d_visualization/samples/growing_grid/python/triple_ring_growth.gif) |
+| Python | C++ |
+|:------:|:---:|
+| ![GG Python](experiments/2d_visualization/samples/growing_grid/python/triple_ring_growth.gif) | ![GG C++](experiments/2d_visualization/samples/growing_grid/cpp/triple_ring_growth.gif) |
 
 ## 対応言語
 
@@ -144,43 +144,58 @@ gng_collection/
 | アルゴリズム | Python | C++ | 説明 |
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | Growing Neural Gas - 動的トポロジー学習 |
-| GNG-U       | ✓      | -   | GNG with Utility - 非定常分布対応 |
+| GNG-U       | ✓      | ✓   | GNG with Utility - 非定常分布対応 |
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
-| GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割 |
-| SOM         | ✓      | -   | Self-Organizing Map - 固定グリッド |
-| Neural Gas  | ✓      | -   | ランクベース競合学習 |
-| GCS         | ✓      | -   | Growing Cell Structures - メッシュ構造 |
-| HCL         | ✓      | -   | Hard Competitive Learning - 勝者のみ更新 |
-| LBG         | ✓      | -   | Linde-Buzo-Gray - バッチベクトル量子化 |
-| Growing Grid| ✓      | -   | 自己成長グリッド構造 |
+| GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
+| SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
+| Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
+| GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
+| HCL         | ✓      | ✓   | Hard Competitive Learning - 勝者のみ更新 |
+| LBG         | ✓      | ✓   | Linde-Buzo-Gray - バッチベクトル量子化 |
+| Growing Grid| ✓      | ✓   | 自己成長グリッド構造 |
 
 ## 計算時間
 
-トリプルリングデータ（1,500サンプル）での計算時間比較。
+トリプルリングデータ（1,500サンプル）での計算時間比較（可視化なし、純粋な学習時間）。
 
 ### Python実装 (5,000イテレーション)
 
 | アルゴリズム | 計算時間 [ms] | ノード数 | エッジ数 |
 |-------------|-------------:|--------:|--------:|
-| GNG         | 610          | 52      | 64      |
-| GNG-U       | 528          | 28      | 27      |
-| GNG-T       | 1,383        | 53      | 121     |
-| GNG-D       | 834          | 52      | 139     |
-| SOM         | 175          | 100     | 180     |
-| Neural Gas  | 247          | 100     | 162     |
-| GCS         | 622          | 53      | 113     |
-| HCL         | 82           | 100     | 0       |
-| LBG         | 664          | 100     | 0       |
-| Growing Grid| 231          | 99      | 178     |
+| GNG         | 496          | 52      | 60      |
+| GNG-U       | 381          | 27      | 26      |
+| GNG-T       | 1,042        | 53      | 132     |
+| GNG-D       | 2,074        | 52      | 135     |
+| SOM         | 144          | 100     | 180     |
+| Neural Gas  | 213          | 100     | 163     |
+| GCS         | 516          | 53      | 103     |
+| HCL         | 62           | 100     | 0       |
+| LBG         | 453          | 100     | 0       |
+| Growing Grid| 164          | 96      | 172     |
+
+### C++実装 (5,000イテレーション)
+
+| アルゴリズム | 計算時間 [ms] | ノード数 | エッジ数 |
+|-------------|-------------:|--------:|--------:|
+| GNG         | 51           | 51      | 63      |
+| GNG-U       | 85           | 30      | 29      |
+| GNG-T       | 139          | 53      | 102     |
+| SOM         | 311          | 100     | 180     |
+| Neural Gas  | 508          | 50      | 55      |
+| GCS         | 97           | 53      | 103     |
+| HCL         | 88           | 50      | 0       |
+| LBG         | 457          | 50      | 0       |
+| Growing Grid| 259          | 99      | 178     |
 
 ### C++実装 (50,000イテレーション)
 
 | アルゴリズム | 計算時間 [ms] | ノード数 | エッジ数 |
 |-------------|-------------:|--------:|--------:|
-| GNG         | 2,289        | 150     | 292     |
-| GNG-T       | 21,804       | 150     | 347     |
+| GNG         | 1,380        | 150     | 292     |
+| GNG-T       | 11,431       | 150     | 347     |
 
-C++実装はPythonの約20〜50倍高速。論文（Kubota & Satomi 2008）の実験条件（50,000イテレーション）でも実用的な速度で動作。
+※ C++のNeural Gas, HCL, LBGはノード数50で測定（Pythonは100）。
+※ C++実装の一部はコールバック処理のオーバーヘッドを含む。GNG系アルゴリズムはPythonの約5〜10倍高速。
 
 ## セットアップ
 
@@ -330,6 +345,70 @@ python test_gng_trajectory.py
 
 詳細は [CLAUDE.md](CLAUDE.md) を参照してください。
 
+## 実装バリアント
+
+GCS、GNG、GNG-T には2つの実装バリアントがあります：
+
+| バリアント | ファイル | ノード挿入時のf選択 | 交差判定 |
+|-----------|---------|-------------------|---------|
+| demogng準拠 | `model.py` | 最大エラー近傍 | CCW法 |
+| Kubotalab準拠 | `model_kubota.py` | 最長エッジ近傍 | γ式 |
+
+### 違いの詳細
+
+**ノード挿入（Step 8.ii / Step 5.ii）**:
+- **demogng版**: 最大誤差ノードqの近傍で「最大エラー」を持つノードfを選択
+- **Kubotalab版**: 最大誤差ノードqの近傍で「最長エッジ」で接続されたノードfを選択
+
+**交差判定（GNG-Tのみ）**:
+- **demogng版**: CCW（Counter-Clockwise）法
+- **Kubotalab版**: 論文のγ式（Section 2.5.2）
+
+### Kubotalab版の使用例
+
+```python
+# GNG (Kubota paper-compliant)
+from algorithms.gng.python.model_kubota import GNGKubota, GNGKubotaParams
+
+params = GNGKubotaParams(max_nodes=50, lambda_=100)
+gng = GNGKubota(n_dim=2, params=params)
+gng.train(X, n_iterations=5000)
+
+# GCS (Kubota paper-compliant)
+from algorithms.gcs.python.model_kubota import GCSKubota, GCSKubotaParams
+
+params = GCSKubotaParams(max_nodes=50, lambda_=100)
+gcs = GCSKubota(n_dim=2, params=params)
+gcs.train(X, n_iterations=5000)
+
+# GNG-T (Kubota paper-compliant)
+from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
+
+params = GNGTKubotaParams(max_nodes=50, lambda_=100)
+gng_t = GNGTKubota(n_dim=2, params=params)
+gng_t.train(X, n_iterations=5000)
+```
+
+### Kubotalab版の可視化サンプル
+
+**トリプルリング（静的分布） - Python**
+
+| GNG Kubota | GCS Kubota | GNG-T Kubota |
+|:----------:|:----------:|:------------:|
+| ![GNG Kubota](experiments/2d_visualization/samples/gng_kubota/python/triple_ring_growth.gif) | ![GCS Kubota](experiments/2d_visualization/samples/gcs_kubota/python/triple_ring_growth.gif) | ![GNG-T Kubota](experiments/2d_visualization/samples/gng_t_kubota/python/triple_ring_growth.gif) |
+
+**トリプルリング（静的分布） - C++**
+
+| GNG Kubota | GCS Kubota | GNG-T Kubota |
+|:----------:|:----------:|:------------:|
+| ![GNG Kubota C++](experiments/2d_visualization/samples/gng_kubota/cpp/triple_ring_growth.gif) | ![GCS Kubota C++](experiments/2d_visualization/samples/gcs_kubota/cpp/triple_ring_growth.gif) | ![GNG-T Kubota C++](experiments/2d_visualization/samples/gng_t_kubota/cpp/triple_ring_growth.gif) |
+
+**トラッキング（動的分布）**
+
+| GNG Kubota | GCS Kubota | GNG-T Kubota |
+|:----------:|:----------:|:------------:|
+| ![GNG Kubota Tracking](experiments/2d_visualization/samples/gng_kubota/python/tracking.gif) | ![GCS Kubota Tracking](experiments/2d_visualization/samples/gcs_kubota/python/tracking.gif) | ![GNG-T Kubota Tracking](experiments/2d_visualization/samples/gng_t_kubota/python/tracking.gif) |
+
 ## 参照元について
 
 各アルゴリズムの詳細は `references/notes/` を参照してください。
@@ -345,6 +424,7 @@ python test_gng_trajectory.py
 - **LBG**: Linde, Y., Buzo, A., & Gray, R. (1980). "An Algorithm for Vector Quantizer Design"
 - **Growing Grid**: Fritzke, B. (1995). "Growing Grid - a self-organizing network"
 - **demogng.de**: https://www.demogng.de/ (リファレンス実装)
+- **Kubotalab論文**: 久保田直行, 里見将志 (2008). "自己増殖型ニューラルネットワークと教師無し分類学習"
 
 ## License
 
