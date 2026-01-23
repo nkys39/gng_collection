@@ -352,19 +352,19 @@ GCS、GNG、GNG-T には2つの実装バリアントがあります：
 | バリアント | ファイル | ノード挿入時のf選択 | 交差判定 |
 |-----------|---------|-------------------|---------|
 | demogng準拠 | `model.py` | 最大エラー近傍 | CCW法 |
-| Kubota論文準拠 | `model_kubota.py` | 最長エッジ近傍 | γ式 |
+| Kubotalab準拠 | `model_kubota.py` | 最長エッジ近傍 | γ式 |
 
 ### 違いの詳細
 
 **ノード挿入（Step 8.ii / Step 5.ii）**:
 - **demogng版**: 最大誤差ノードqの近傍で「最大エラー」を持つノードfを選択
-- **Kubota版**: 最大誤差ノードqの近傍で「最長エッジ」で接続されたノードfを選択
+- **Kubotalab版**: 最大誤差ノードqの近傍で「最長エッジ」で接続されたノードfを選択
 
 **交差判定（GNG-Tのみ）**:
 - **demogng版**: CCW（Counter-Clockwise）法
-- **Kubota版**: 論文のγ式（Section 2.5.2）
+- **Kubotalab版**: 論文のγ式（Section 2.5.2）
 
-### Kubota版の使用例
+### Kubotalab版の使用例
 
 ```python
 # GNG (Kubota paper-compliant)
@@ -389,7 +389,7 @@ gng_t = GNGTKubota(n_dim=2, params=params)
 gng_t.train(X, n_iterations=5000)
 ```
 
-### Kubota版の可視化サンプル
+### Kubotalab版の可視化サンプル
 
 **トリプルリング（静的分布） - Python**
 
@@ -424,7 +424,7 @@ gng_t.train(X, n_iterations=5000)
 - **LBG**: Linde, Y., Buzo, A., & Gray, R. (1980). "An Algorithm for Vector Quantizer Design"
 - **Growing Grid**: Fritzke, B. (1995). "Growing Grid - a self-organizing network"
 - **demogng.de**: https://www.demogng.de/ (リファレンス実装)
-- **Kubota論文**: 久保田直行, 里見将志 (2008). "自己増殖型ニューラルネットワークと教師無し分類学習"
+- **Kubotalab論文**: 久保田直行, 里見将志 (2008). "自己増殖型ニューラルネットワークと教師無し分類学習"
 
 ## License
 
