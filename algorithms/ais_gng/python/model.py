@@ -272,6 +272,10 @@ class AiSGNG:
         """
         p = self.params
 
+        # Don't remove if only 2 nodes remain
+        if self.n_nodes <= 2:
+            return
+
         # Find max error and min utility
         max_error = 0.0
         min_utility = float("inf")
