@@ -162,13 +162,29 @@ scipy.spatial.Delaunay による明示的な三角形分割でトポロジーを
 
 ## 3D可視化サンプル
 
-### GNG - 床と壁 (Floor + Wall)
+床面（XZ平面）と壁面（XY平面）が直角に接続したL字型形状での3Dトポロジー学習。
 
-3Dデータでのトポロジー学習。床面（XZ平面）と壁面（XY平面）が直角に接続したL字型形状。
+### GNG
 
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
-| ![GNG 3D Floor+Wall](experiments/3d_pointcloud/samples/gng/python/floor_wall_growth.gif) | ![GNG 3D Final](experiments/3d_pointcloud/samples/gng/python/floor_wall_final.png) |
+| ![GNG 3D](experiments/3d_pointcloud/samples/gng/python/floor_wall_growth.gif) | ![GNG 3D Final](experiments/3d_pointcloud/samples/gng/python/floor_wall_final.png) |
+
+### GNG-U
+
+Utility付きGNG。低利用ノードを削除して非定常分布に対応。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-U 3D](experiments/3d_pointcloud/samples/gng_u/python/floor_wall_growth.gif) | ![GNG-U 3D Final](experiments/3d_pointcloud/samples/gng_u/python/floor_wall_final.png) |
+
+### GNG-U2
+
+κ間隔でUtilityチェックを行う改良版。AiS-GNGのベース。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-U2 3D](experiments/3d_pointcloud/samples/gng_u2/python/floor_wall_growth.gif) | ![GNG-U2 3D Final](experiments/3d_pointcloud/samples/gng_u2/python/floor_wall_final.png) |
 
 ## 対応言語
 
