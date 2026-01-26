@@ -4,19 +4,42 @@
 
 AiS-GNG (Add-if-Silent Rule-Based Growing Neural Gas) は、GNG-U (Growing Neural Gas with Utility) を拡張し、Add-if-Silentルールを導入することで、高密度な位相構造を素早く生成できるアルゴリズムです。
 
+## 実装バリアント
+
+本リポジトリでは3つのバリアントを提供しています：
+
+| ファイル | 論文 | 閾値 | AM機能 | 説明 |
+|---------|------|------|:------:|------|
+| `model_roman.py` | RO-MAN 2023 | 単一 θ_AiS | - | 基本版、シンプル |
+| `model.py` | SMC 2023 (部分) | 範囲 [θ_min, θ_max] | - | 範囲閾値版 |
+| `model_am.py` | SMC 2023 (完全) | 範囲 [θ_min, θ_max] | ✓ | 動的オブジェクト対応 |
+
+```python
+# RO-MAN 2023 版（単一閾値）
+from algorithms.ais_gng.python.model_roman import AiSGNGRoman, AiSGNGRomanParams
+
+# SMC 2023 範囲閾値版（AM未実装）
+from algorithms.ais_gng.python.model import AiSGNG, AiSGNGParams
+
+# SMC 2023 完全版（AM機能付き）
+from algorithms.ais_gng.python.model_am import AiSGNGAM, AiSGNGAMParams
+```
+
 ## 論文情報
 
 ### 主要論文
 
-1. **RO-MAN 2023**
+1. **RO-MAN 2023** - 基本版
    - Shoji, M., Obo, T., & Kubota, N.
    - "Add-if-Silent Rule-Based Growing Neural Gas for High-Density Topological Structure of Unknown Objects"
    - IEEE RO-MAN 2023, pp. 2492-2498
+   - **特徴**: 単一閾値 θ_AiS による Add-if-Silent ルール
 
-2. **SMC 2023 (拡張版: AiS-GNG-AM)**
+2. **SMC 2023 (拡張版: AiS-GNG-AM)** - 動的オブジェクト対応版
    - Shoji, M., Obo, T., & Kubota, N.
    - "Add-if-Silent Rule-Based Growing Neural Gas with Amount of Movement for High-Density Topological Structure Generation of Dynamic Object"
    - IEEE SMC 2023, pp. 3040-3047
+   - **特徴**: 範囲閾値 [θ_min, θ_max] + Amount of Movement (AM) による動的オブジェクト検出
 
 ### ベースとなる手法
 
@@ -37,7 +60,17 @@ AiS-GNG (Add-if-Silent Rule-Based Growing Neural Gas) は、GNG-U (Growing Neura
 ネオコグニトロンの学習ルールに基づく概念：
 > 「有用な入力に反応するニューロンがなければ、その位置に新しいニューロンを追加する」
 
-AiS-GNGでは、以下の条件を満たす場合、入力データを直接新しいノードとして追加します：
+#### RO-MAN 2023 版（単一閾値）
+
+```
+IF ||v_t - h_s1|| < θ_AiS AND ||v_t - h_s2|| < θ_AiS THEN
+    新しいノード r を追加
+```
+
+- 入力が両勝者ノードから θ_AiS **以内** なら追加
+- シンプルだが、既存ノードに近すぎる入力も追加される可能性
+
+#### SMC 2023 版（範囲閾値）
 
 ```
 IF θ_min < ||v_t - h_s1|| < θ_max AND θ_min < ||v_t - h_s2|| < θ_max THEN
@@ -47,6 +80,9 @@ IF θ_min < ||v_t - h_s1|| < θ_max AND θ_min < ||v_t - h_s2|| < θ_max THEN
     - U_r = 0.5 * (U_s1 + U_s2)
     - エッジ: r-s1, r-s2 を接続
 ```
+
+- **最小閾値 θ_min** により、既存ノードに近すぎる入力は追加されない（冗長ノード防止）
+- **最大閾値 θ_max** により、遠すぎる入力も追加されない
 
 ### アルゴリズムの流れ
 
@@ -110,12 +146,54 @@ Tracking:
 | Utility基準チェック | λ間隔 | κ間隔（より頻繁） |
 | 誤差の計算 | 二乗距離 | ユークリッド距離 |
 
+## Amount of Movement (AM) 機能 (SMC 2023)
+
+SMC 2023 論文では、動的オブジェクト検出のために各ノードの移動量を追跡します。
+
+### AM の計算
+
+```
+AM_i(t) = γ_AM * AM_i(t-1) + ||h_i(t) - h_i(t-1)||
+```
+
+- `γ_AM`: 減衰率（0.95 など）、過去の移動を徐々に忘れる
+- `||h_i(t) - h_i(t-1)||`: 現在の移動量
+
+### 動的オブジェクト検出
+
+```
+IF AM_i > θ_AM THEN
+    ノード i は「移動中」と分類
+```
+
+### 使用例
+
+```python
+from algorithms.ais_gng.python.model_am import AiSGNGAM, AiSGNGAMParams
+
+params = AiSGNGAMParams(
+    am_decay=0.95,      # AM減衰率
+    am_threshold=0.01,  # 移動判定閾値
+)
+gng = AiSGNGAM(n_dim=2, params=params)
+gng.train(X, n_iterations=5000)
+
+# 移動量取得
+movements = gng.get_node_movements()
+
+# 移動ノードのマスク
+moving_mask = gng.get_moving_nodes_mask()
+
+# グラフを移動/静止部分に分割
+moving_nodes, moving_edges, static_nodes, static_edges = gng.segment_by_movement()
+```
+
 ## 応用
 
 - 3Dポイントクラウド処理
 - 未知物体の位相構造学習
 - 移動ロボットの環境認識
-- 動的オブジェクトの追跡（AiS-GNG-AM版）
+- **動的オブジェクトの追跡・セグメンテーション**（AiS-GNG-AM版）
 
 ## 実装のポイント
 
