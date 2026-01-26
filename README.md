@@ -61,16 +61,21 @@ Add-if-Silentルールにより、有用な入力を直接ノードとして追�
 |:------:|:---:|:-----------:|
 | ![AiS-GNG Python](experiments/2d_visualization/samples/ais_gng/python/triple_ring_growth.gif) | ![AiS-GNG C++](experiments/2d_visualization/samples/ais_gng/cpp/triple_ring_growth.gif) | ![AiS-GNG Tracking](experiments/2d_visualization/samples/ais_gng/python/tracking.gif) |
 
-#### AiS-GNG バリアント比較
+#### AiS-GNG RO-MAN 2023 (単一閾値)
 
-| | RO-MAN 2023 (単一閾値) | SMC 2023 with AM (移動量追跡) |
-|:-:|:----------------------:|:----------------------------:|
-| **Python** | ![AiS-GNG RO-MAN](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG-AM](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) |
-| **C++** | ![AiS-GNG RO-MAN C++](experiments/2d_visualization/samples/ais_gng_roman/cpp/triple_ring_growth.gif) | ![AiS-GNG-AM C++](experiments/2d_visualization/samples/ais_gng_am/cpp/triple_ring_growth.gif) |
-| **トラッキング** | ![AiS-GNG RO-MAN Tracking](experiments/2d_visualization/samples/ais_gng_roman/python/tracking.gif) | ![AiS-GNG-AM Tracking](experiments/2d_visualization/samples/ais_gng_am/python/tracking.gif) |
+単一閾値 `||v - h|| < θ_AiS` で判定する基本版。
 
-- **RO-MAN 2023**: 単一閾値 `||v - h|| < θ_AiS` で判定
-- **SMC 2023 (AM)**: 範囲閾値 + ノード移動量を色で可視化（青=静止、赤=移動）
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![AiS-GNG RO-MAN Python](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG RO-MAN C++](experiments/2d_visualization/samples/ais_gng_roman/cpp/triple_ring_growth.gif) | ![AiS-GNG RO-MAN Tracking](experiments/2d_visualization/samples/ais_gng_roman/python/tracking.gif) |
+
+#### AiS-GNG-AM SMC 2023 (移動量追跡)
+
+範囲閾値 + ノード移動量を色で可視化（青=静止、赤=移動）。
+
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![AiS-GNG-AM Python](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) | ![AiS-GNG-AM C++](experiments/2d_visualization/samples/ais_gng_am/cpp/triple_ring_growth.gif) | ![AiS-GNG-AM Tracking](experiments/2d_visualization/samples/ais_gng_am/python/tracking.gif) |
 
 ### GNG-T (GNG with Triangulation)
 
