@@ -459,116 +459,114 @@ def print_triangle_comparison(comparison: dict) -> None:
 def get_minimal_cycles(
     nodes: np.ndarray,
     edges_per_node: dict[int, set[int]],
-    max_cycle_size: int = 10,
+    max_cycle_size: int = 50,
 ) -> list[list[int]]:
-    """平面グラフの最小サイクル（面）を検出
+    """平面グラフの全ての面を検出（反時計回り探索）
 
-    各有向エッジから、反時計回りに次のエッジを辿って面を構成する。
+    各有向エッジ(u,v)は正確に1つの面に属する。
+    反時計回りに辿ることで全ての面を検出する。
 
     Args:
         nodes: ノード座標 (n_nodes, 2)
         edges_per_node: 隣接リスト
-        max_cycle_size: 最大サイクルサイズ（無限ループ防止）
+        max_cycle_size: 最大サイクルサイズ（外周面除外用）
 
     Returns:
         サイクルのリスト [[v0, v1, v2, ...], ...]
+        外周面（最大サイクル）は除外される
     """
     if len(nodes) < 3:
         return []
 
-    def angle_from(v_from: int, v_to: int) -> float:
-        """v_fromからv_toへの角度を計算"""
-        dx = nodes[v_to, 0] - nodes[v_from, 0]
-        dy = nodes[v_to, 1] - nodes[v_from, 1]
-        return np.arctan2(dy, dx)
+    # 各ノードの隣接ノードを角度順にソート
+    sorted_neighbors: dict[int, list[int]] = {}
+    for node_id, neighbors in edges_per_node.items():
+        if not neighbors:
+            continue
+        # 角度でソート
+        neighbor_list = list(neighbors)
+        angles = []
+        for neighbor in neighbor_list:
+            dx = nodes[neighbor, 0] - nodes[node_id, 0]
+            dy = nodes[neighbor, 1] - nodes[node_id, 1]
+            angles.append(np.arctan2(dy, dx))
+        sorted_idx = np.argsort(angles)
+        sorted_neighbors[node_id] = [neighbor_list[i] for i in sorted_idx]
 
     def next_edge_ccw(v_prev: int, v_curr: int) -> int:
-        """v_prevからv_currに来た時、反時計回りで次のエッジの先を返す"""
-        neighbors = edges_per_node.get(v_curr, set())
+        """v_prevからv_currに来た時、反時計回りで次の頂点を返す"""
+        neighbors = sorted_neighbors.get(v_curr, [])
         if not neighbors:
             return -1
 
-        # v_prevからv_currへの入射角度
-        incoming_angle = angle_from(v_curr, v_prev)
+        # v_prevのインデックスを見つける
+        try:
+            prev_idx = neighbors.index(v_prev)
+        except ValueError:
+            return neighbors[0] if neighbors else -1
 
-        # 各隣接ノードへの角度を計算し、反時計回りで最も近いものを選ぶ
-        best_next = -1
-        best_angle_diff = float('inf')
-
-        for neighbor in neighbors:
-            if neighbor == v_prev and len(neighbors) > 1:
-                continue  # 来た道は避ける（ただし唯一の隣接なら戻る）
-
-            outgoing_angle = angle_from(v_curr, neighbor)
-            # 反時計回りの角度差（0〜2π）
-            angle_diff = (outgoing_angle - incoming_angle) % (2 * np.pi)
-            if angle_diff < 0.0001:  # ほぼ同じ方向は避ける
-                angle_diff = 2 * np.pi
-
-            if angle_diff < best_angle_diff:
-                best_angle_diff = angle_diff
-                best_next = neighbor
-
-        return best_next
+        # 反時計回りで次（インデックスを1つ進める）
+        next_idx = (prev_idx + 1) % len(neighbors)
+        return neighbors[next_idx]
 
     # 全ての有向エッジを列挙
-    directed_edges: set[tuple[int, int]] = set()
+    all_directed_edges: set[tuple[int, int]] = set()
     for u, neighbors in edges_per_node.items():
         for v in neighbors:
-            directed_edges.add((u, v))
+            all_directed_edges.add((u, v))
 
-    # 既に使用した有向エッジを追跡
+    # 処理済み有向エッジ
     used_edges: set[tuple[int, int]] = set()
     cycles: list[list[int]] = []
 
-    for start_u, start_v in directed_edges:
+    for start_u, start_v in all_directed_edges:
         if (start_u, start_v) in used_edges:
             continue
 
-        # このエッジから始まるサイクルを探索
-        cycle = [start_u]
+        # このエッジから反時計回りに辿る
+        cycle_edges: list[tuple[int, int]] = [(start_u, start_v)]
         prev_node = start_u
         curr_node = start_v
 
-        while len(cycle) < max_cycle_size:
-            cycle.append(curr_node)
-
-            if curr_node == start_u:
-                # サイクル完成
-                break
-
+        valid = True
+        while len(cycle_edges) <= max_cycle_size:
             next_node = next_edge_ccw(prev_node, curr_node)
+
             if next_node == -1:
+                valid = False
                 break
 
+            if next_node == start_u:
+                # サイクル完成
+                cycle_edges.append((curr_node, next_node))
+                break
+
+            cycle_edges.append((curr_node, next_node))
             prev_node = curr_node
             curr_node = next_node
 
-        # 有効なサイクルか確認
-        if len(cycle) >= 3 and cycle[-1] == start_u:
-            cycle = cycle[:-1]  # 最後の重複を除去
+            # 無限ループ検出
+            if len(cycle_edges) > max_cycle_size:
+                valid = False
+                break
 
-            # サイクルを正規化（最小頂点から開始）
-            min_idx = cycle.index(min(cycle))
-            normalized = tuple(cycle[min_idx:] + cycle[:min_idx])
+        if valid and len(cycle_edges) >= 3 and cycle_edges[-1][1] == start_u:
+            # 有効なサイクル
+            cycle = [e[0] for e in cycle_edges]
 
-            # 逆方向のサイクルを避けるため、2番目の頂点でソート方向を決定
-            if len(normalized) >= 2:
-                # 既に追加済みか確認
-                is_new = True
-                for existing in cycles:
-                    if set(existing) == set(normalized):
-                        is_new = False
-                        break
+            # 使用したエッジをマーク
+            for edge in cycle_edges:
+                used_edges.add(edge)
 
-                if is_new:
-                    cycles.append(list(normalized))
+            cycles.append(cycle)
 
-                    # 使用したエッジをマーク
-                    for i in range(len(cycle)):
-                        u = cycle[i]
-                        v = cycle[(i + 1) % len(cycle)]
-                        used_edges.add((u, v))
+    # 外周面（最大サイクル）を除外
+    if cycles:
+        max_len = max(len(c) for c in cycles)
+        # 外周面は通常最大のサイクルなので、それ以外を返す
+        # ただし、同じサイズのサイクルが複数ある場合は全て含める
+        if max_len > max_cycle_size // 2:
+            cycles = [c for c in cycles if len(c) < max_len]
 
     return cycles
 
@@ -670,10 +668,24 @@ class CycleResult:
 def detect_minimal_cycles(
     nodes: np.ndarray,
     edges_per_node: dict[int, set[int]],
-    max_cycle_size: int = 8,
+    max_cycle_size: int = 50,
+    use_simple: bool = False,
 ) -> CycleResult:
-    """最小サイクルを検出（時間計測付き）"""
+    """最小サイクル（面）を検出（時間計測付き）
+
+    Args:
+        nodes: ノード座標
+        edges_per_node: 隣接リスト
+        max_cycle_size: 最大サイクルサイズ
+        use_simple: Trueの場合、BFS版を使用（高速だが検出漏れあり）
+
+    Returns:
+        CycleResult: 検出結果
+    """
     start = time.perf_counter()
-    cycles = get_minimal_cycles_simple(nodes, edges_per_node, max_cycle_size)
+    if use_simple:
+        cycles = get_minimal_cycles_simple(nodes, edges_per_node, max_cycle_size)
+    else:
+        cycles = get_minimal_cycles(nodes, edges_per_node, max_cycle_size)
     elapsed = time.perf_counter() - start
     return CycleResult(cycles=cycles, elapsed_time=elapsed)
