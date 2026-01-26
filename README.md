@@ -65,7 +65,8 @@ Add-if-Silentルールにより、有用な入力を直接ノードとして追�
 
 | | RO-MAN 2023 (単一閾値) | SMC 2023 with AM (移動量追跡) |
 |:-:|:----------------------:|:----------------------------:|
-| **トリプルリング** | ![AiS-GNG RO-MAN](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG-AM](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) |
+| **Python** | ![AiS-GNG RO-MAN](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG-AM](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) |
+| **C++** | ![AiS-GNG RO-MAN C++](experiments/2d_visualization/samples/ais_gng_roman/cpp/triple_ring_growth.gif) | ![AiS-GNG-AM C++](experiments/2d_visualization/samples/ais_gng_am/cpp/triple_ring_growth.gif) |
 | **トラッキング** | ![AiS-GNG RO-MAN Tracking](experiments/2d_visualization/samples/ais_gng_roman/python/tracking.gif) | ![AiS-GNG-AM Tracking](experiments/2d_visualization/samples/ais_gng_am/python/tracking.gif) |
 
 - **RO-MAN 2023**: 単一閾値 `||v - h|| < θ_AiS` で判定

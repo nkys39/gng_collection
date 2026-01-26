@@ -57,6 +57,14 @@ target_link_libraries(test_gngu2_triple_ring Eigen3::Eigen)
 add_executable(test_aisgng_triple_ring test_aisgng_triple_ring.cpp)
 target_link_libraries(test_aisgng_triple_ring Eigen3::Eigen)
 
+# AiS-GNG RO-MAN 2023 Triple ring test
+add_executable(test_aisgng_roman_triple_ring test_aisgng_roman_triple_ring.cpp)
+target_link_libraries(test_aisgng_roman_triple_ring Eigen3::Eigen)
+
+# AiS-GNG-AM (SMC 2023) Triple ring test
+add_executable(test_aisgng_am_triple_ring test_aisgng_am_triple_ring.cpp)
+target_link_libraries(test_aisgng_am_triple_ring Eigen3::Eigen)
+
 # SOM Triple ring test
 add_executable(test_som_triple_ring test_som_triple_ring.cpp)
 target_link_libraries(test_som_triple_ring Eigen3::Eigen)
