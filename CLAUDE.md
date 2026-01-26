@@ -21,27 +21,34 @@ gng_collection/
 │   ├── lbg/              # Linde-Buzo-Gray
 │   └── growing_grid/     # Growing Grid
 ├── experiments/          # 実験コード
-│   └── 2d_visualization/
-│       ├── _templates/   # テストテンプレート
-│       │   ├── triple_ring.py
-│       │   └── tracking.py
+│   ├── 2d_visualization/
+│   │   ├── _templates/   # テストテンプレート
+│   │   │   ├── triple_ring.py
+│   │   │   └── tracking.py
+│   │   ├── samples/      # 出力サンプル（git管理対象）
+│   │   │   ├── gng/
+│   │   │   │   ├── python/
+│   │   │   │   └── cpp/
+│   │   │   ├── gng_u/
+│   │   │   ├── gng_u2/
+│   │   │   ├── ais_gng/
+│   │   │   ├── gng_t/
+│   │   │   │   ├── python/
+│   │   │   │   └── cpp/
+│   │   │   ├── som/
+│   │   │   ├── neural_gas/
+│   │   │   └── gcs/
+│   │   └── test_*.py     # テストスクリプト
+│   └── 3d_pointcloud/    # 3Dテスト
 │       ├── samples/      # 出力サンプル（git管理対象）
-│       │   ├── gng/
-│       │   │   ├── python/
-│       │   │   └── cpp/
-│       │   ├── gng_u/
-│       │   ├── gng_u2/
-│       │   ├── ais_gng/
-│       │   ├── gng_t/
-│       │   │   ├── python/
-│       │   │   └── cpp/
-│       │   ├── som/
-│       │   ├── neural_gas/
-│       │   └── gcs/
+│       │   └── gng/
+│       │       └── python/
 │       └── test_*.py     # テストスクリプト
 ├── data/2d/              # 2Dデータ関連
 │   ├── sampler.py
 │   └── shapes/
+├── data/3d/              # 3Dデータ関連
+│   └── sampler.py        # 3Dサンプラー（floor_and_wall等）
 ├── references/           # 参照資料
 │   ├── notes/            # アルゴリズムノート
 │   └── original_code/    # リファレンス実装
@@ -147,6 +154,65 @@ total_frames = 120
 samples_per_frame = 50
 ```
 
+### 3D床と壁テスト（静的分布）
+
+床面（XZ平面）と壁面（XY平面）が直角に接続したL字型形状での3Dトポロジー学習テスト。
+
+```python
+params = GNGParams(
+    max_nodes=150,    # 3D表面用に多めのノード
+    lambda_=100,
+    eps_b=0.1,
+    eps_n=0.01,
+    alpha=0.5,
+    beta=0.005,
+    max_age=100,
+)
+n_iterations = 8000
+n_samples = 2000
+```
+
+#### テストの実行
+
+```bash
+cd experiments/3d_pointcloud
+python test_gng_floor_wall.py
+```
+
+#### 出力ファイル
+
+- `floor_wall_growth.gif` - 成長過程アニメーション（視点回転付き）
+- `floor_wall_final.png` - 最終状態（3D視点 + 2D側面図の2画面）
+
+#### サンプルの保存
+
+```bash
+mkdir -p samples/[algorithm]/python
+mv gng_floor_wall_growth.gif samples/[algorithm]/python/floor_wall_growth.gif
+mv gng_floor_wall_final.png samples/[algorithm]/python/floor_wall_final.png
+git add -f samples/[algorithm]/
+```
+
+#### READMEへの表示
+
+README.mdの「3D可視化サンプル」セクションに以下の形式で追加:
+
+```markdown
+### [Algorithm Name] - 床と壁 (Floor + Wall)
+
+説明文。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GIF](experiments/3d_pointcloud/samples/[algorithm]/python/floor_wall_growth.gif) | ![PNG](experiments/3d_pointcloud/samples/[algorithm]/python/floor_wall_final.png) |
+```
+
+#### 可視化の詳細
+
+- **GIF**: 3D視点で回転しながら成長過程を表示（azim: 120° → 180°）
+- **PNG左側**: 3Dパースペクティブビュー（elev=25, azim=120）
+- **PNG右側**: 2D側面図（YZ平面、Y=depth横軸、Z=height縦軸）
+
 ## .gitignore について
 
 `experiments/**/*.gif` と `experiments/**/*.png` は除外されていますが、
@@ -225,6 +291,10 @@ python test_gcs_tracking.py
 python test_hcl_triple_ring.py
 python test_lbg_triple_ring.py
 python test_gg_triple_ring.py
+
+# 3Dテスト実行
+cd experiments/3d_pointcloud
+python test_gng_floor_wall.py
 
 # C++ビルド
 cd experiments/2d_visualization/cpp

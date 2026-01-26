@@ -160,6 +160,64 @@ scipy.spatial.Delaunay による明示的な三角形分割でトポロジーを
 |:------:|:---:|
 | ![GG Python](experiments/2d_visualization/samples/growing_grid/python/triple_ring_growth.gif) | ![GG C++](experiments/2d_visualization/samples/growing_grid/cpp/triple_ring_growth.gif) |
 
+## 3D可視化サンプル
+
+床面（XZ平面）と壁面（XY平面）が直角に接続したL字型形状での3Dトポロジー学習。
+
+### GNG
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG 3D](experiments/3d_pointcloud/samples/gng/python/floor_wall_growth.gif) | ![GNG 3D Final](experiments/3d_pointcloud/samples/gng/python/floor_wall_final.png) |
+
+### GNG-U
+
+Utility付きGNG。低利用ノードを削除して非定常分布に対応。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-U 3D](experiments/3d_pointcloud/samples/gng_u/python/floor_wall_growth.gif) | ![GNG-U 3D Final](experiments/3d_pointcloud/samples/gng_u/python/floor_wall_final.png) |
+
+### GNG-U2
+
+κ間隔でUtilityチェックを行う改良版。AiS-GNGのベース。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-U2 3D](experiments/3d_pointcloud/samples/gng_u2/python/floor_wall_growth.gif) | ![GNG-U2 3D Final](experiments/3d_pointcloud/samples/gng_u2/python/floor_wall_final.png) |
+
+### AiS-GNG
+
+Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![AiS-GNG 3D](experiments/3d_pointcloud/samples/ais_gng/python/floor_wall_growth.gif) | ![AiS-GNG 3D Final](experiments/3d_pointcloud/samples/ais_gng/python/floor_wall_final.png) |
+
+### GNG-T
+
+ヒューリスティック三角形分割。エッジ交差を検出して削除。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-T 3D](experiments/3d_pointcloud/samples/gng_t/python/floor_wall_growth.gif) | ![GNG-T 3D Final](experiments/3d_pointcloud/samples/gng_t/python/floor_wall_final.png) |
+
+### GNG-D
+
+明示的Delaunay三角形分割。scipy.spatialを使用。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-D 3D](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_growth.gif) | ![GNG-D 3D Final](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_final.png) |
+
+### GCS
+
+単体複体（simplicial complex）構造を維持しながら成長。3Dでは四面体から開始。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GCS 3D](experiments/3d_pointcloud/samples/gcs/floor_wall_growth.gif) | ![GCS 3D Final](experiments/3d_pointcloud/samples/gcs/floor_wall_final.png) |
+
 ## 対応言語
 
 - Python
