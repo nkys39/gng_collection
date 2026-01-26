@@ -168,6 +168,7 @@ experiments/polygon_filling/
 ├── test_triangle_comparison.py     # 三角形検出方法の比較
 ├── test_minimal_cycles.py          # 最小サイクル検出テスト（GNG）
 ├── test_aisgng_minimal_cycles.py   # 最小サイクル検出テスト（AiS-GNG）
+├── test_bfs_vs_ccw.py              # BFS vs CCW アルゴリズム比較
 └── samples/                        # 出力結果
     ├── gng_triple_ring_*.png/gif
     ├── aisgng_triple_ring_*.png/gif
@@ -285,10 +286,12 @@ CCW探索の仕組み:
 
 #### AiS-GNG 300ノードでの比較
 
+![BFS vs CCW Comparison](samples/bfs_vs_ccw_final.png)
+
 | アルゴリズム | 検出総数 | 計算時間 | 特徴 |
 |-------------|----------|---------|------|
-| BFS版 | 201個 | 3.20 ms | 高速だが検出漏れあり |
-| CCW版 | **208個** | 4.91 ms | 全面を完全検出 |
+| BFS版 | 201個 | 3.49 ms | 高速だが検出漏れあり |
+| CCW版 | **208個** | 4.81 ms | 全面を完全検出 |
 
 **検出内訳の比較:**
 
@@ -301,7 +304,9 @@ CCW探索の仕組み:
 | 7角形 | 4 | 8 | +4 |
 | 8角形 | 2 | 2 | 0 |
 | 9角形 | 1 | 1 | 0 |
-| 10角形 | 1 | 1 | 0 |
+| 10/11角形 | 1 | 1 | 0 |
+
+![BFS vs CCW Growth](samples/bfs_vs_ccw_growth.gif)
 
 **考察:**
 - CCW版は5角形以上の面をより多く検出
