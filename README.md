@@ -49,17 +49,17 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 
 GNG-Uの改良版。κ間隔でUtilityチェックを行い、非定常分布への追従性を向上。AiS-GNGのベースアルゴリズム。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![GNG-U2 Triple Ring](experiments/2d_visualization/samples/gng_u2/python/triple_ring_growth.gif) | ![GNG-U2 Tracking](experiments/2d_visualization/samples/gng_u2/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![GNG-U2 Python](experiments/2d_visualization/samples/gng_u2/python/triple_ring_growth.gif) | ![GNG-U2 C++](experiments/2d_visualization/samples/gng_u2/cpp/triple_ring_growth.gif) | ![GNG-U2 Tracking](experiments/2d_visualization/samples/gng_u2/python/tracking.gif) |
 
 ### AiS-GNG (Add-if-Silent Rule-Based GNG)
 
 Add-if-Silentルールにより、有用な入力を直接ノードとして追加。高密度な位相構造を素早く生成。
 
-| トリプルリング | トラッキング |
-|:-------------:|:-----------:|
-| ![AiS-GNG Triple Ring](experiments/2d_visualization/samples/ais_gng/python/triple_ring_growth.gif) | ![AiS-GNG Tracking](experiments/2d_visualization/samples/ais_gng/python/tracking.gif) |
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![AiS-GNG Python](experiments/2d_visualization/samples/ais_gng/python/triple_ring_growth.gif) | ![AiS-GNG C++](experiments/2d_visualization/samples/ais_gng/cpp/triple_ring_growth.gif) | ![AiS-GNG Tracking](experiments/2d_visualization/samples/ais_gng/python/tracking.gif) |
 
 ### GNG-T (GNG with Triangulation)
 
@@ -165,8 +165,8 @@ gng_collection/
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | Growing Neural Gas - 動的トポロジー学習 |
 | GNG-U       | ✓      | ✓   | GNG with Utility - 非定常分布対応 |
-| GNG-U2      | ✓      | -   | GNG with Utility V2 - κ間隔Utilityチェック |
-| AiS-GNG     | ✓      | -   | Add-if-Silent GNG - 高密度位相構造の高速生成 |
+| GNG-U2      | ✓      | ✓   | GNG with Utility V2 - κ間隔Utilityチェック |
+| AiS-GNG     | ✓      | ✓   | Add-if-Silent GNG - 高密度位相構造の高速生成 |
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
