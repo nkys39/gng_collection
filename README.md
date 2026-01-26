@@ -55,22 +55,46 @@ GNG-Uの改良版。κ間隔でUtilityチェックを行い、非定常分布へ
 
 ### AiS-GNG (Add-if-Silent Rule-Based GNG)
 
-Add-if-Silentルールにより、有用な入力を直接ノードとして追加。高密度な位相構造を素早く生成。
+GNG-U2をベースに、ネオコグニトロンの「Add-if-Silent」ルールを導入。従来のGNGでは累積誤差に基づきλ間隔でノードを追加するが、AiS-GNGでは有用な入力を直接ノードとして即座に追加することで、高密度な位相構造を素早く生成する。
+
+2つの論文に基づく3つのバリアントを実装：
+
+| バリアント | 論文 | Add-if-Silent条件 | AM機能 |
+|-----------|------|------------------|:------:|
+| **RO-MAN 2023** | IEEE RO-MAN 2023 | `\|\|v - h\|\| < θ_AiS` (単一閾値) | - |
+| **SMC 2023** | IEEE SMC 2023 | `θ_min < \|\|v - h\|\| < θ_max` (範囲閾値) | - |
+| **SMC 2023 + AM** | IEEE SMC 2023 | `θ_min < \|\|v - h\|\| < θ_max` (範囲閾値) | ✓ |
+
+**Add-if-Silent条件の違い：**
+- **RO-MAN 2023（単一閾値）**: 入力が両勝者ノードからθ_AiS以内なら追加。シンプルだが、既存ノードに近すぎる入力も追加される可能性がある。
+- **SMC 2023（範囲閾値）**: 入力が両勝者ノードから[θ_min, θ_max]の範囲内なら追加。θ_minにより冗長ノードを防止。
+
+**Amount of Movement (AM)：**
+SMC 2023論文で導入された動的オブジェクト検出機能。各ノードの移動量を `AM_i(t) = γ_AM × AM_i(t-1) + ||h_i(t) - h_i(t-1)||` で追跡し、AM > θ_AM のノードを「移動中」と分類する。
+
+#### AiS-GNG SMC 2023 (範囲閾値)
+
+範囲閾値 `θ_min < ||v - h|| < θ_max` で判定。本リポジトリのデフォルト実装。
 
 | Python | C++ | トラッキング |
 |:------:|:---:|:-----------:|
 | ![AiS-GNG Python](experiments/2d_visualization/samples/ais_gng/python/triple_ring_growth.gif) | ![AiS-GNG C++](experiments/2d_visualization/samples/ais_gng/cpp/triple_ring_growth.gif) | ![AiS-GNG Tracking](experiments/2d_visualization/samples/ais_gng/python/tracking.gif) |
 
-#### AiS-GNG バリアント比較
+#### AiS-GNG RO-MAN 2023 (単一閾値)
 
-| | RO-MAN 2023 (単一閾値) | SMC 2023 with AM (移動量追跡) |
-|:-:|:----------------------:|:----------------------------:|
-| **Python** | ![AiS-GNG RO-MAN](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG-AM](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) |
-| **C++** | ![AiS-GNG RO-MAN C++](experiments/2d_visualization/samples/ais_gng_roman/cpp/triple_ring_growth.gif) | ![AiS-GNG-AM C++](experiments/2d_visualization/samples/ais_gng_am/cpp/triple_ring_growth.gif) |
-| **トラッキング** | ![AiS-GNG RO-MAN Tracking](experiments/2d_visualization/samples/ais_gng_roman/python/tracking.gif) | ![AiS-GNG-AM Tracking](experiments/2d_visualization/samples/ais_gng_am/python/tracking.gif) |
+単一閾値 `||v - h|| < θ_AiS` で判定。最初に発表された基本版。
 
-- **RO-MAN 2023**: 単一閾値 `||v - h|| < θ_AiS` で判定
-- **SMC 2023 (AM)**: 範囲閾値 + ノード移動量を色で可視化（青=静止、赤=移動）
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![AiS-GNG RO-MAN Python](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG RO-MAN C++](experiments/2d_visualization/samples/ais_gng_roman/cpp/triple_ring_growth.gif) | ![AiS-GNG RO-MAN Tracking](experiments/2d_visualization/samples/ais_gng_roman/python/tracking.gif) |
+
+#### AiS-GNG-AM SMC 2023 (移動量追跡)
+
+範囲閾値 + Amount of Movement機能。ノード移動量を色で可視化（青=静止、赤=移動）。動的オブジェクトのセグメンテーションが可能。
+
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![AiS-GNG-AM Python](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) | ![AiS-GNG-AM C++](experiments/2d_visualization/samples/ais_gng_am/cpp/triple_ring_growth.gif) | ![AiS-GNG-AM Tracking](experiments/2d_visualization/samples/ais_gng_am/python/tracking.gif) |
 
 ### GNG-T (GNG with Triangulation)
 
@@ -464,7 +488,8 @@ from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
 - **GNG**: Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies" (NIPS'94)
 - **GNG-U**: Fritzke, B. (1997). "Some Competitive Learning Methods"
 - **GNG-U2**: Toda, Y., et al. (2016). "Real-time 3D point cloud segmentation using Growing Neural Gas with Utility" (IEEE ICRA 2016)
-- **AiS-GNG**: Shoji, M., Obo, T., & Kubota, N. (2023). "Add-if-Silent Rule-Based Growing Neural Gas for High-Density Topological Structure of Unknown Objects" (IEEE RO-MAN 2023)
+- **AiS-GNG (RO-MAN)**: Shoji, M., Obo, T., & Kubota, N. (2023). "Add-if-Silent Rule-Based Growing Neural Gas for High-Density Topological Structure of Unknown Objects" (IEEE RO-MAN 2023, pp. 2492-2498)
+- **AiS-GNG-AM (SMC)**: Shoji, M., Obo, T., & Kubota, N. (2023). "Add-if-Silent Rule-Based Growing Neural Gas with Amount of Movement for High-Density Topological Structure Generation of Dynamic Object" (IEEE SMC 2023, pp. 3040-3047)
 - **GNG-T**: Kubota, N. & Satomi, M. (2008). "Growing Neural Gas with Triangulation"
 - **GNG-D**: Martinetz & Schulten (1994) の明示的Delaunay手法を応用
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"

@@ -298,8 +298,11 @@ private:
         bool s2_in_range = dist2 > params.theta_ais_min && dist2 < params.theta_ais_max;
 
         if (s1_in_range && s2_in_range) {
+            // SMC 2023: new node inherits average error/utility/AM from parents
+            float new_error = (nodes[s1_id].error + nodes[s2_id].error) * 0.5f;
+            float new_utility = (nodes[s1_id].utility + nodes[s2_id].utility) * 0.5f;
             float new_am = (nodes[s1_id].amount_of_movement + nodes[s2_id].amount_of_movement) * 0.5f;
-            int new_id = add_node(sample, 1.0f, 0.0f, new_am);
+            int new_id = add_node(sample, new_error, new_utility, new_am);
             if (new_id == -1) return false;
             add_edge(new_id, s1_id);
             add_edge(new_id, s2_id);
