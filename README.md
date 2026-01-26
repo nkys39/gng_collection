@@ -61,6 +61,15 @@ Add-if-Silentルールにより、有用な入力を直接ノードとして追�
 |:------:|:---:|:-----------:|
 | ![AiS-GNG Python](experiments/2d_visualization/samples/ais_gng/python/triple_ring_growth.gif) | ![AiS-GNG C++](experiments/2d_visualization/samples/ais_gng/cpp/triple_ring_growth.gif) | ![AiS-GNG Tracking](experiments/2d_visualization/samples/ais_gng/python/tracking.gif) |
 
+#### AiS-GNG バリアント比較
+
+| RO-MAN 2023 (単一閾値) | SMC 2023 with AM (移動量追跡) |
+|:----------------------:|:----------------------------:|
+| ![AiS-GNG RO-MAN](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG-AM](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) |
+
+- **RO-MAN 2023**: 単一閾値 `||v - h|| < θ_AiS` で判定
+- **SMC 2023 (AM)**: 範囲閾値 + ノード移動量を色で可視化（青=静止、赤=移動）
+
 ### GNG-T (GNG with Triangulation)
 
 ヒューリスティックな三角形分割（四角形探索・交差点探索）でメッシュ構造を改善。Kubota & Satomi (2008) に基づく実装。
