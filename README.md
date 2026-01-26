@@ -11,6 +11,8 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 |-------------|------|
 | **GNG** | ノードを動的に追加、エッジ年齢に基づくトポロジー学習 |
 | **GNG-U** | GNG + Utility基準でノード削除、非定常分布に対応 |
+| **GNG-U2** | GNG-U改良版、κ間隔Utilityチェックでリアルタイム処理対応 |
+| **AiS-GNG** | GNG-U2 + Add-if-Silentルール、高密度位相構造の高速生成 |
 | **GNG-T** | GNG + ヒューリスティック三角形分割（四角形探索・交差点探索） |
 | **GNG-D** | GNG + 明示的Delaunay三角形分割（scipy.spatial.Delaunay） |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
@@ -42,6 +44,33 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | Python | C++ | トラッキング |
 |:------:|:---:|:-----------:|
 | ![GNG-U Python](experiments/2d_visualization/samples/gng_u/python/triple_ring_growth.gif) | ![GNG-U C++](experiments/2d_visualization/samples/gng_u/cpp/triple_ring_growth.gif) | ![GNG-U Tracking](experiments/2d_visualization/samples/gng_u/python/tracking.gif) |
+
+### GNG-U2 (GNG with Utility - Variant 2)
+
+GNG-Uの改良版。κ間隔でUtilityチェックを行い、非定常分布への追従性を向上。AiS-GNGのベースアルゴリズム。
+
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![GNG-U2 Python](experiments/2d_visualization/samples/gng_u2/python/triple_ring_growth.gif) | ![GNG-U2 C++](experiments/2d_visualization/samples/gng_u2/cpp/triple_ring_growth.gif) | ![GNG-U2 Tracking](experiments/2d_visualization/samples/gng_u2/python/tracking.gif) |
+
+### AiS-GNG (Add-if-Silent Rule-Based GNG)
+
+Add-if-Silentルールにより、有用な入力を直接ノードとして追加。高密度な位相構造を素早く生成。
+
+| Python | C++ | トラッキング |
+|:------:|:---:|:-----------:|
+| ![AiS-GNG Python](experiments/2d_visualization/samples/ais_gng/python/triple_ring_growth.gif) | ![AiS-GNG C++](experiments/2d_visualization/samples/ais_gng/cpp/triple_ring_growth.gif) | ![AiS-GNG Tracking](experiments/2d_visualization/samples/ais_gng/python/tracking.gif) |
+
+#### AiS-GNG バリアント比較
+
+| | RO-MAN 2023 (単一閾値) | SMC 2023 with AM (移動量追跡) |
+|:-:|:----------------------:|:----------------------------:|
+| **Python** | ![AiS-GNG RO-MAN](experiments/2d_visualization/samples/ais_gng_roman/python/triple_ring_growth.gif) | ![AiS-GNG-AM](experiments/2d_visualization/samples/ais_gng_am/python/triple_ring_growth.gif) |
+| **C++** | ![AiS-GNG RO-MAN C++](experiments/2d_visualization/samples/ais_gng_roman/cpp/triple_ring_growth.gif) | ![AiS-GNG-AM C++](experiments/2d_visualization/samples/ais_gng_am/cpp/triple_ring_growth.gif) |
+| **トラッキング** | ![AiS-GNG RO-MAN Tracking](experiments/2d_visualization/samples/ais_gng_roman/python/tracking.gif) | ![AiS-GNG-AM Tracking](experiments/2d_visualization/samples/ais_gng_am/python/tracking.gif) |
+
+- **RO-MAN 2023**: 単一閾値 `||v - h|| < θ_AiS` で判定
+- **SMC 2023 (AM)**: 範囲閾値 + ノード移動量を色で可視化（青=静止、赤=移動）
 
 ### GNG-T (GNG with Triangulation)
 
@@ -120,6 +149,8 @@ gng_collection/
 │   ├── _template/       # 新アルゴリズム用テンプレート
 │   ├── gng/             # 標準GNG
 │   ├── gng_u/           # GNG-U (Utility)
+│   ├── gng_u2/          # GNG-U2 (Utility V2 - κ間隔チェック)
+│   ├── ais_gng/         # AiS-GNG (Add-if-Silent Rule)
 │   ├── gng_t/           # GNG-T (Triangulation - Kubota 2008)
 │   ├── gng_d/           # GNG-D (explicit Delaunay)
 │   ├── som/             # Self-Organizing Map
@@ -145,6 +176,8 @@ gng_collection/
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | Growing Neural Gas - 動的トポロジー学習 |
 | GNG-U       | ✓      | ✓   | GNG with Utility - 非定常分布対応 |
+| GNG-U2      | ✓      | ✓   | GNG with Utility V2 - κ間隔Utilityチェック |
+| AiS-GNG     | ✓      | ✓   | Add-if-Silent GNG - 高密度位相構造の高速生成 |
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
@@ -226,6 +259,38 @@ params = GNGParams(max_nodes=50, lambda_=100)
 gng = GrowingNeuralGas(n_dim=2, params=params)
 gng.train(X, n_iterations=5000)
 nodes, edges = gng.get_graph()
+```
+
+### GNG-U2 (κ間隔Utilityチェック)
+
+```python
+from algorithms.gng_u2.python.model import GrowingNeuralGasU2, GNGU2Params
+
+params = GNGU2Params(
+    max_nodes=100,
+    kappa=10,         # Utilityチェック間隔（GNG-U2の特徴）
+    utility_k=1000.0, # Utility閾値
+)
+gng_u2 = GrowingNeuralGasU2(n_dim=2, params=params)
+gng_u2.train(X, n_iterations=5000)
+nodes, edges = gng_u2.get_graph()
+print(f"Utility removals: {gng_u2.n_removals}")
+```
+
+### AiS-GNG (Add-if-Silent Rule)
+
+```python
+from algorithms.ais_gng.python.model import AiSGNG, AiSGNGParams
+
+params = AiSGNGParams(
+    max_nodes=100,
+    theta_ais_min=0.02,  # Add-if-Silentの最小距離閾値
+    theta_ais_max=0.10,  # Add-if-Silentの最大距離閾値
+)
+ais_gng = AiSGNG(n_dim=2, params=params)
+ais_gng.train(X, n_iterations=5000)
+nodes, edges = ais_gng.get_graph()
+print(f"AiS additions: {ais_gng.n_ais_additions}")  # Add-if-Silentによる追加数
 ```
 
 ### GNG-T (Triangulation - Kubota 2008)
@@ -315,6 +380,8 @@ cd experiments/2d_visualization
 # 各アルゴリズムのテスト（トリプルリング）
 python test_gng_triple_ring.py
 python test_gngu_triple_ring.py
+python test_gngu2_triple_ring.py
+python test_aisgng_triple_ring.py
 python test_gngt_triple_ring.py
 python test_gngd_triple_ring.py
 python test_som_triple_ring.py
@@ -327,6 +394,8 @@ python test_gg_triple_ring.py
 # トラッキングテスト
 python test_gng_tracking.py
 python test_gngu_tracking.py
+python test_gngu2_tracking.py
+python test_aisgng_tracking.py
 python test_gngt_tracking.py
 python test_gngd_tracking.py
 python test_som_tracking.py
@@ -394,6 +463,8 @@ from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
 
 - **GNG**: Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies" (NIPS'94)
 - **GNG-U**: Fritzke, B. (1997). "Some Competitive Learning Methods"
+- **GNG-U2**: Toda, Y., et al. (2016). "Real-time 3D point cloud segmentation using Growing Neural Gas with Utility" (IEEE ICRA 2016)
+- **AiS-GNG**: Shoji, M., Obo, T., & Kubota, N. (2023). "Add-if-Silent Rule-Based Growing Neural Gas for High-Density Topological Structure of Unknown Objects" (IEEE RO-MAN 2023)
 - **GNG-T**: Kubota, N. & Satomi, M. (2008). "Growing Neural Gas with Triangulation"
 - **GNG-D**: Martinetz & Schulten (1994) の明示的Delaunay手法を応用
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"
