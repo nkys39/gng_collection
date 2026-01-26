@@ -205,7 +205,7 @@ def main():
     print("  → {max_cycle_size}角形までを検出対象とする")
 
     params = AiSGNGParams(
-        max_nodes=100,
+        max_nodes=300,
         lambda_=100,
         kappa=10,
         eps_b=0.05,
@@ -218,7 +218,7 @@ def main():
         theta_ais_min=0.015,
         theta_ais_max=0.06,
     )
-    n_iterations = 8000
+    n_iterations = 20000
     n_samples = 1500
     seed = 42
 
