@@ -166,7 +166,8 @@ experiments/polygon_filling/
 ├── test_dense_graph.py             # アルゴリズム比較（コンソール）
 ├── test_dense_graph_visual.py      # 密グラフの可視化
 ├── test_triangle_comparison.py     # 三角形検出方法の比較
-├── test_minimal_cycles.py          # 最小サイクル検出テスト
+├── test_minimal_cycles.py          # 最小サイクル検出テスト（GNG）
+├── test_aisgng_minimal_cycles.py   # 最小サイクル検出テスト（AiS-GNG）
 └── samples/                        # 出力結果
     ├── gng_triple_ring_*.png/gif
     ├── aisgng_triple_ring_*.png/gif
@@ -227,12 +228,49 @@ for cycle in result.cycles:
     print(cycle)  # [0, 3, 7, 2, 1]
 ```
 
-### 成長アニメーション
+### GNGでの比較
 
 ![Minimal Cycles Growth](samples/minimal_cycles_growth.gif)
 
 左: 極大クリーク方式（三角形のみ）
 右: 最小サイクル方式（全サイズ、色分け）
+
+### AiS-GNGでの比較
+
+AiS-GNGは密なグラフを生成するため、より多様な多角形が検出される。
+
+![AiS-GNG Minimal Cycles](samples/aisgng_minimal_cycles_final.png)
+
+| 方式 | 検出総数 | 計算時間 |
+|------|----------|---------|
+| 極大クリーク | 54個（K3のみ） | 0.55 ms |
+| 最小サイクル | 73個（3〜10角形） | 0.70 ms |
+
+**最小サイクル方式の検出内訳（AiS-GNG）:**
+- 3角形: 54個
+- 4角形: 10個
+- 5角形: 6個
+- 6角形: 2個
+- 10角形: 1個
+
+![AiS-GNG Minimal Cycles Growth](samples/aisgng_minimal_cycles_growth.gif)
+
+### 検出閾値
+
+`max_cycle_size` パラメータで検出する最大サイクルサイズを制御できる。
+
+```python
+# 8角形まで検出（デフォルト）
+result = detect_minimal_cycles(nodes, edges_per_node, max_cycle_size=8)
+
+# 12角形まで検出
+result = detect_minimal_cycles(nodes, edges_per_node, max_cycle_size=12)
+```
+
+- 大きな値にすると計算時間が増加する
+- 平面グラフでは通常、外周以外の面は小さいサイクルで構成される
+
+### 色分け
 
 - 緑: 3-サイクル（三角形）
 - 青: 4-サイクル（四角形）
@@ -240,6 +278,8 @@ for cycle in result.cycles:
 - 赤: 6-サイクル
 - 紫: 7-サイクル
 - シアン: 8-サイクル
+- カーキ: 9-サイクル
+- プラム: 10-サイクル
 
 ## 参考文献
 
