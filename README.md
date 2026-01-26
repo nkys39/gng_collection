@@ -210,6 +210,14 @@ Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
 |:--------:|:--------:|
 | ![GNG-D 3D](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_growth.gif) | ![GNG-D 3D Final](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_final.png) |
 
+### GCS
+
+単体複体（simplicial complex）構造を維持しながら成長。3Dでは四面体から開始。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GCS 3D](experiments/3d_pointcloud/samples/gcs/floor_wall_growth.gif) | ![GCS 3D Final](experiments/3d_pointcloud/samples/gcs/floor_wall_final.png) |
+
 ## 対応言語
 
 - Python

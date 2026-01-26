@@ -106,28 +106,79 @@ class GrowingCellStructures:
         self.n_learning = 0
         self._n_trial = 0
 
-        # Initialize with a triangle (minimum 2D simplicial complex)
-        self._init_triangle()
+        # Initialize with a simplex (n_dim+1 nodes for n-dimensional space)
+        self._init_simplex()
 
-    def _init_triangle(self) -> None:
-        """Initialize with a triangle of 3 nodes."""
-        # Create 3 nodes forming a triangle
-        positions = [
-            np.array([0.3, 0.3]),
-            np.array([0.7, 0.3]),
-            np.array([0.5, 0.7]),
-        ]
+    def _init_simplex(self) -> None:
+        """Initialize with a simplex of (n_dim+1) nodes.
+
+        For 2D: triangle (3 nodes)
+        For 3D: tetrahedron (4 nodes)
+        For nD: n-simplex (n+1 nodes)
+        """
+        n_vertices = self.n_dim + 1
+
+        # Generate simplex vertices centered around (0.5, 0.5, ...)
+        # Use regular simplex construction
+        positions = self._generate_simplex_vertices(n_vertices)
 
         node_ids = []
         for pos in positions:
+            # Add small random perturbation
             weight = pos + self.rng.random(self.n_dim) * 0.1
             node_id = self._add_node(weight.astype(np.float32))
             node_ids.append(node_id)
 
-        # Connect all pairs (triangle edges)
-        for i in range(3):
-            for j in range(i + 1, 3):
+        # Connect all pairs (simplex edges)
+        for i in range(n_vertices):
+            for j in range(i + 1, n_vertices):
                 self._add_edge(node_ids[i], node_ids[j])
+
+    def _generate_simplex_vertices(self, n_vertices: int) -> list[np.ndarray]:
+        """Generate vertices of a regular simplex in n_dim space.
+
+        Args:
+            n_vertices: Number of vertices (should be n_dim + 1).
+
+        Returns:
+            List of position vectors.
+        """
+        # For 2D: equilateral triangle
+        if self.n_dim == 2:
+            return [
+                np.array([0.3, 0.3]),
+                np.array([0.7, 0.3]),
+                np.array([0.5, 0.7]),
+            ]
+
+        # For 3D: regular tetrahedron
+        if self.n_dim == 3:
+            # Tetrahedron vertices centered around (0.5, 0.5, 0.5)
+            # Using coordinates that give a regular tetrahedron
+            a = 0.3
+            return [
+                np.array([0.5 + a, 0.5 + a, 0.5 + a]),
+                np.array([0.5 + a, 0.5 - a, 0.5 - a]),
+                np.array([0.5 - a, 0.5 + a, 0.5 - a]),
+                np.array([0.5 - a, 0.5 - a, 0.5 + a]),
+            ]
+
+        # For higher dimensions: use general construction
+        # Start with vertices of a regular n-simplex
+        positions = []
+        for i in range(n_vertices):
+            pos = np.zeros(self.n_dim)
+            if i < self.n_dim:
+                pos[i] = 1.0
+            positions.append(pos)
+
+        # Center around (0.5, 0.5, ...) and scale
+        center = np.mean(positions, axis=0)
+        scale = 0.3
+        return [
+            (pos - center) * scale + 0.5
+            for pos in positions
+        ]
 
     def _add_node(self, weight: np.ndarray) -> int:
         """Add a new node with given weight.
