@@ -174,9 +174,22 @@ def run_experiment(
     )
     gng.train(points, n_iterations=n_iterations, callback=callback)
 
-    # Save final frame (use end azimuth)
+    # Save final frame with dual view (initial view + side view from YZ plane)
     nodes, edges = gng.get_graph()
-    create_frame(ax, points, nodes, edges, n_iterations, azim=azim_end)
+    plt.close(fig)
+
+    fig_final, axes = plt.subplots(1, 2, figsize=(16, 8), facecolor="white",
+                                    subplot_kw={"projection": "3d"})
+
+    # Left: Initial view (azim=120)
+    create_frame(axes[0], points, nodes, edges, n_iterations, elev=25, azim=azim_start)
+    axes[0].set_title(f"GNG 3D - Perspective View ({len(nodes)} nodes)")
+
+    # Right: Side view from YZ plane (looking along X axis)
+    create_frame(axes[1], points, nodes, edges, n_iterations, elev=0, azim=0)
+    axes[1].set_title(f"GNG 3D - Side View (YZ plane)")
+
+    plt.tight_layout()
     plt.savefig(output_final, dpi=150, bbox_inches="tight", facecolor="white")
     print(f"Saved final result: {output_final}")
 
