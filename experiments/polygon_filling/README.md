@@ -159,18 +159,87 @@ triangles = decompose_to_triangles(result.cliques)
 
 ```
 experiments/polygon_filling/
-├── README.md                     # このファイル
-├── polygon_utils.py              # クリーク検出・三角形分割ユーティリティ
-├── test_gng_triple_ring.py       # GNGテスト（疎なグラフ）
-├── test_aisgng_triple_ring.py    # AiS-GNGテスト（密なグラフ）
-├── test_dense_graph.py           # アルゴリズム比較（コンソール）
-├── test_dense_graph_visual.py    # 密グラフの可視化
-└── samples/                      # 出力結果
+├── README.md                       # このファイル
+├── polygon_utils.py                # クリーク検出・サイクル検出ユーティリティ
+├── test_gng_triple_ring.py         # GNGテスト（疎なグラフ）
+├── test_aisgng_triple_ring.py      # AiS-GNGテスト（密なグラフ）
+├── test_dense_graph.py             # アルゴリズム比較（コンソール）
+├── test_dense_graph_visual.py      # 密グラフの可視化
+├── test_triangle_comparison.py     # 三角形検出方法の比較
+├── test_minimal_cycles.py          # 最小サイクル検出テスト
+└── samples/                        # 出力結果
     ├── gng_triple_ring_*.png/gif
     ├── aisgng_triple_ring_*.png/gif
     ├── dense_graph_cliques.png
+    ├── triangle_comparison_*.png/gif
+    ├── minimal_cycles_*.png/gif
     └── algorithm_comparison.txt
 ```
+
+## 最小サイクル検出
+
+### 問題: 極大クリーク方式の限界
+
+極大クリーク方式では、頂点間に全てのエッジが存在する「完全部分グラフ」のみを検出する。
+しかし、GNGのようなグラフでは、エッジで囲まれているが対角線がない四角形や五角形が存在する。
+
+```
+極大クリーク方式で検出できない例:
+
+    A---B
+    |   |     ← 四角形だが、対角線AC, BDがないためK4ではない
+    D---C
+
+    A---B
+   / \ / \    ← 五角形だが、全対角線がないためK5ではない
+  E   X   C
+   \ / \ /
+    D---E
+```
+
+### 解決策: 最小サイクル検出
+
+最小サイクル検出は、各エッジについてそのエッジを含む最小サイクルを探索する。
+これにより、エッジで囲まれた全ての領域（面）を検出できる。
+
+### 比較結果
+
+![Minimal Cycles Comparison](samples/minimal_cycles_final.png)
+
+| 方式 | 検出対象 | 検出数（例） |
+|------|---------|-------------|
+| 極大クリーク | 完全部分グラフ（K3, K4, K5...） | 10個（三角形のみ） |
+| 最小サイクル | エッジで囲まれた全領域 | 11個（三角形10 + 五角形1） |
+
+### 使い方
+
+```python
+from experiments.polygon_filling.polygon_utils import detect_minimal_cycles
+
+# 最小サイクル検出
+result = detect_minimal_cycles(nodes, edges_per_node, max_cycle_size=8)
+
+# サイズ別カウント
+print(result.count_by_size())  # {3: 10, 5: 1, ...}
+
+# 各サイクルの頂点リスト
+for cycle in result.cycles:
+    print(cycle)  # [0, 3, 7, 2, 1]
+```
+
+### 成長アニメーション
+
+![Minimal Cycles Growth](samples/minimal_cycles_growth.gif)
+
+左: 極大クリーク方式（三角形のみ）
+右: 最小サイクル方式（全サイズ、色分け）
+
+- 緑: 3-サイクル（三角形）
+- 青: 4-サイクル（四角形）
+- 金: 5-サイクル
+- 赤: 6-サイクル
+- 紫: 7-サイクル
+- シアン: 8-サイクル
 
 ## 参考文献
 

@@ -450,3 +450,230 @@ def print_triangle_comparison(comparison: dict) -> None:
     print(f"  実行時間: {comparison['graph']['avg_time_ms']:.3f} ms")
 
     print("=" * 50)
+
+
+# =============================================================================
+# 最小サイクル検出（平面グラフの面検出）
+# =============================================================================
+
+def get_minimal_cycles(
+    nodes: np.ndarray,
+    edges_per_node: dict[int, set[int]],
+    max_cycle_size: int = 10,
+) -> list[list[int]]:
+    """平面グラフの最小サイクル（面）を検出
+
+    各有向エッジから、反時計回りに次のエッジを辿って面を構成する。
+
+    Args:
+        nodes: ノード座標 (n_nodes, 2)
+        edges_per_node: 隣接リスト
+        max_cycle_size: 最大サイクルサイズ（無限ループ防止）
+
+    Returns:
+        サイクルのリスト [[v0, v1, v2, ...], ...]
+    """
+    if len(nodes) < 3:
+        return []
+
+    def angle_from(v_from: int, v_to: int) -> float:
+        """v_fromからv_toへの角度を計算"""
+        dx = nodes[v_to, 0] - nodes[v_from, 0]
+        dy = nodes[v_to, 1] - nodes[v_from, 1]
+        return np.arctan2(dy, dx)
+
+    def next_edge_ccw(v_prev: int, v_curr: int) -> int:
+        """v_prevからv_currに来た時、反時計回りで次のエッジの先を返す"""
+        neighbors = edges_per_node.get(v_curr, set())
+        if not neighbors:
+            return -1
+
+        # v_prevからv_currへの入射角度
+        incoming_angle = angle_from(v_curr, v_prev)
+
+        # 各隣接ノードへの角度を計算し、反時計回りで最も近いものを選ぶ
+        best_next = -1
+        best_angle_diff = float('inf')
+
+        for neighbor in neighbors:
+            if neighbor == v_prev and len(neighbors) > 1:
+                continue  # 来た道は避ける（ただし唯一の隣接なら戻る）
+
+            outgoing_angle = angle_from(v_curr, neighbor)
+            # 反時計回りの角度差（0〜2π）
+            angle_diff = (outgoing_angle - incoming_angle) % (2 * np.pi)
+            if angle_diff < 0.0001:  # ほぼ同じ方向は避ける
+                angle_diff = 2 * np.pi
+
+            if angle_diff < best_angle_diff:
+                best_angle_diff = angle_diff
+                best_next = neighbor
+
+        return best_next
+
+    # 全ての有向エッジを列挙
+    directed_edges: set[tuple[int, int]] = set()
+    for u, neighbors in edges_per_node.items():
+        for v in neighbors:
+            directed_edges.add((u, v))
+
+    # 既に使用した有向エッジを追跡
+    used_edges: set[tuple[int, int]] = set()
+    cycles: list[list[int]] = []
+
+    for start_u, start_v in directed_edges:
+        if (start_u, start_v) in used_edges:
+            continue
+
+        # このエッジから始まるサイクルを探索
+        cycle = [start_u]
+        prev_node = start_u
+        curr_node = start_v
+
+        while len(cycle) < max_cycle_size:
+            cycle.append(curr_node)
+
+            if curr_node == start_u:
+                # サイクル完成
+                break
+
+            next_node = next_edge_ccw(prev_node, curr_node)
+            if next_node == -1:
+                break
+
+            prev_node = curr_node
+            curr_node = next_node
+
+        # 有効なサイクルか確認
+        if len(cycle) >= 3 and cycle[-1] == start_u:
+            cycle = cycle[:-1]  # 最後の重複を除去
+
+            # サイクルを正規化（最小頂点から開始）
+            min_idx = cycle.index(min(cycle))
+            normalized = tuple(cycle[min_idx:] + cycle[:min_idx])
+
+            # 逆方向のサイクルを避けるため、2番目の頂点でソート方向を決定
+            if len(normalized) >= 2:
+                # 既に追加済みか確認
+                is_new = True
+                for existing in cycles:
+                    if set(existing) == set(normalized):
+                        is_new = False
+                        break
+
+                if is_new:
+                    cycles.append(list(normalized))
+
+                    # 使用したエッジをマーク
+                    for i in range(len(cycle)):
+                        u = cycle[i]
+                        v = cycle[(i + 1) % len(cycle)]
+                        used_edges.add((u, v))
+
+    return cycles
+
+
+def get_minimal_cycles_simple(
+    nodes: np.ndarray,
+    edges_per_node: dict[int, set[int]],
+    max_cycle_size: int = 8,
+) -> list[list[int]]:
+    """簡易版: BFSで最小サイクルを検出
+
+    各エッジについて、そのエッジを含む最小サイクルを探す。
+
+    Args:
+        nodes: ノード座標 (n_nodes, 2)
+        edges_per_node: 隣接リスト
+        max_cycle_size: 最大サイクルサイズ
+
+    Returns:
+        サイクルのリスト
+    """
+    from collections import deque
+
+    cycles: list[tuple[int, ...]] = []
+    seen_cycles: set[tuple[int, ...]] = set()
+
+    # 全エッジを列挙
+    all_edges: list[tuple[int, int]] = []
+    for u, neighbors in edges_per_node.items():
+        for v in neighbors:
+            if u < v:
+                all_edges.append((u, v))
+
+    for edge_u, edge_v in all_edges:
+        # edge_u -> edge_v を含む最小サイクルをBFSで探索
+        # edge_vからedge_uへの最短パス（edge_u-edge_v以外のエッジを使用）を探す
+
+        queue: deque[tuple[int, list[int]]] = deque()
+        queue.append((edge_v, [edge_u, edge_v]))
+        visited: set[int] = {edge_v}
+
+        found = False
+        while queue and not found:
+            curr, path = queue.popleft()
+
+            if len(path) > max_cycle_size:
+                continue
+
+            for neighbor in edges_per_node.get(curr, set()):
+                if neighbor == edge_u and len(path) >= 3:
+                    # サイクル発見
+                    cycle = path
+                    # 正規化
+                    min_idx = cycle.index(min(cycle))
+                    normalized = tuple(cycle[min_idx:] + cycle[:min_idx])
+                    # 逆順も確認
+                    reversed_norm = tuple(reversed(normalized))
+                    reversed_norm = tuple(
+                        list(reversed_norm)[-1:] + list(reversed_norm)[:-1]
+                    )
+
+                    if normalized not in seen_cycles and reversed_norm not in seen_cycles:
+                        cycles.append(normalized)
+                        seen_cycles.add(normalized)
+                    found = True
+                    break
+
+                if neighbor not in visited and neighbor != edge_u:
+                    visited.add(neighbor)
+                    queue.append((neighbor, path + [neighbor]))
+
+    return [list(c) for c in cycles]
+
+
+@dataclass
+class CycleResult:
+    """サイクル検出結果"""
+    cycles: list[list[int]]
+    elapsed_time: float
+
+    def by_size(self) -> dict[int, list[list[int]]]:
+        """サイズ別に分類"""
+        result: dict[int, list[list[int]]] = {}
+        for cycle in self.cycles:
+            size = len(cycle)
+            if size not in result:
+                result[size] = []
+            result[size].append(cycle)
+        return result
+
+    def count_by_size(self) -> dict[int, int]:
+        """サイズ別カウント"""
+        return {size: len(cycles) for size, cycles in self.by_size().items()}
+
+    def total_count(self) -> int:
+        return len(self.cycles)
+
+
+def detect_minimal_cycles(
+    nodes: np.ndarray,
+    edges_per_node: dict[int, set[int]],
+    max_cycle_size: int = 8,
+) -> CycleResult:
+    """最小サイクルを検出（時間計測付き）"""
+    start = time.perf_counter()
+    cycles = get_minimal_cycles_simple(nodes, edges_per_node, max_cycle_size)
+    elapsed = time.perf_counter() - start
+    return CycleResult(cycles=cycles, elapsed_time=elapsed)
