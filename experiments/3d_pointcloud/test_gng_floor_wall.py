@@ -46,7 +46,7 @@ def create_frame(
     edges: list[tuple[int, int]],
     iteration: int,
     elev: float = 25,
-    azim: float = -60,
+    azim: float = 120,
 ) -> None:
     """Create a single frame for 3D visualization."""
     ax.clear()
@@ -138,6 +138,11 @@ def run_experiment(
     # Collect frames for GIF
     frames = []
     frame_interval = max(1, n_iterations // gif_frames)
+    frame_count = [0]  # Use list to allow modification in nested function
+
+    # Rotation animation settings
+    azim_start = 120  # Wall at back
+    azim_end = 180  # Rotate 60 degrees during animation
 
     fig = plt.figure(figsize=(10, 10), facecolor="white")
     ax = fig.add_subplot(111, projection="3d")
@@ -145,7 +150,12 @@ def run_experiment(
     def callback(model, iteration):
         if iteration % frame_interval == 0 or iteration == n_iterations - 1:
             nodes, edges = model.get_graph()
-            create_frame(ax, points, nodes, edges, iteration)
+
+            # Calculate azimuth for rotation animation
+            progress = frame_count[0] / gif_frames
+            azim = azim_start + (azim_end - azim_start) * progress
+
+            create_frame(ax, points, nodes, edges, iteration, azim=azim)
             fig.canvas.draw()
 
             # Convert to PIL Image
@@ -154,6 +164,7 @@ def run_experiment(
             )
             frames.append(img.convert("RGB"))
             print(f"Iteration {iteration}: {len(nodes)} nodes, {len(edges)} edges")
+            frame_count[0] += 1
 
     # Train
     print(f"Training GNG for {n_iterations} iterations...")
@@ -163,9 +174,9 @@ def run_experiment(
     )
     gng.train(points, n_iterations=n_iterations, callback=callback)
 
-    # Save final frame
+    # Save final frame (use end azimuth)
     nodes, edges = gng.get_graph()
-    create_frame(ax, points, nodes, edges, n_iterations)
+    create_frame(ax, points, nodes, edges, n_iterations, azim=azim_end)
     plt.savefig(output_final, dpi=150, bbox_inches="tight", facecolor="white")
     print(f"Saved final result: {output_final}")
 
