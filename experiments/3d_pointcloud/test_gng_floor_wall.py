@@ -186,31 +186,32 @@ def run_experiment(
     ax_3d.set_title(f"GNG 3D - Perspective View ({len(nodes)} nodes)")
 
     # Right: Pure 2D side view (YZ plane)
+    # Z axis vertical (up = positive), Y axis horizontal (left = positive)
     ax_2d = fig_final.add_subplot(1, 2, 2)
 
-    # Plot data points (Y, Z only)
-    ax_2d.scatter(points[:, 2], points[:, 1], c="skyblue", s=2, alpha=0.2, label="Data")
+    # Plot data points (Y horizontal, Z vertical)
+    ax_2d.scatter(points[:, 1], points[:, 2], c="skyblue", s=2, alpha=0.2, label="Data")
 
-    # Plot edges (Y, Z only)
+    # Plot edges (Y horizontal, Z vertical)
     for i, j in edges:
         ax_2d.plot(
-            [nodes[i, 2], nodes[j, 2]],
             [nodes[i, 1], nodes[j, 1]],
+            [nodes[i, 2], nodes[j, 2]],
             "r-",
             linewidth=1.0,
             alpha=0.7,
         )
 
-    # Plot nodes (Y, Z only)
-    ax_2d.scatter(nodes[:, 2], nodes[:, 1], c="red", s=30, zorder=5, label="Nodes")
+    # Plot nodes (Y horizontal, Z vertical)
+    ax_2d.scatter(nodes[:, 1], nodes[:, 2], c="red", s=30, zorder=5, label="Nodes")
 
-    ax_2d.set_xlim(0, 1)
-    ax_2d.set_ylim(0, 1)
-    ax_2d.set_xlabel("Z")
-    ax_2d.set_ylabel("Y (height)")
+    ax_2d.set_xlim(1, 0)  # Y axis: left = positive
+    ax_2d.set_ylim(0, 1)  # Z axis: up = positive
+    ax_2d.set_xlabel("Y (depth)")
+    ax_2d.set_ylabel("Z (height)")
     ax_2d.set_aspect("equal")
     ax_2d.set_title(f"GNG 3D - Side View (YZ plane)")
-    ax_2d.legend(loc="upper right")
+    ax_2d.legend(loc="upper left")
 
     plt.tight_layout()
     plt.savefig(output_final, dpi=150, bbox_inches="tight", facecolor="white")
