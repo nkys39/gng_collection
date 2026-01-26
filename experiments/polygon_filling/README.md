@@ -51,9 +51,31 @@ Kn → (n-2)つの三角形に分割
 
 ## 結果
 
-### GNG トリプルリング
+### GNG トリプルリング（疎なグラフ）
 
 ![GNG Triple Ring](samples/gng_triple_ring_growth.gif)
+
+K3（三角形）のみ検出。GNGは疎なグラフを生成するため、K4以上はほとんど出現しない。
+
+### AiS-GNG トリプルリング（密なグラフ）
+
+![AiS-GNG Triple Ring](samples/aisgng_triple_ring_growth.gif)
+
+AiS-GNGはAdd-if-Silentルールによりノードを密に生成するため、K3に加えてK4、K5も検出される。
+
+- 緑: K3（三角形）
+- 青: K4（四面体）
+- 黄: K5（五角形完全グラフ）
+
+### 密なグラフでのクリーク可視化
+
+![Dense Graph Cliques](samples/dense_graph_cliques.png)
+
+左上から時計回りに:
+1. **Multiple Cliques (K5+K4+K3)**: 既知構造（K5, K4, K3が各1個）
+2. **Random (p=0.3)**: K3とK4が混在
+3. **Random (p=0.7)**: K4〜K6が多数検出
+4. **Random (p=0.5)**: K3〜K5が検出
 
 ### アルゴリズム比較
 
@@ -96,17 +118,26 @@ cd experiments/polygon_filling
 # GNGトリプルリングテスト（GIF生成）
 python test_gng_triple_ring.py
 
-# 密なグラフでのアルゴリズム比較
+# AiS-GNGトリプルリングテスト（密なグラフ、GIF生成）
+python test_aisgng_triple_ring.py
+
+# 密なグラフでのアルゴリズム比較（コンソール出力）
 python test_dense_graph.py
+
+# 密なグラフの可視化（PNG生成）
+python test_dense_graph_visual.py
 ```
 
 ### 出力ファイル
 
 ```
 samples/
-├── gng_triple_ring_final.png      # 最終結果画像
-├── gng_triple_ring_growth.gif     # 成長アニメーション
-└── algorithm_comparison.txt       # アルゴリズム比較結果
+├── gng_triple_ring_final.png       # GNG最終結果
+├── gng_triple_ring_growth.gif      # GNG成長アニメーション
+├── aisgng_triple_ring_final.png    # AiS-GNG最終結果
+├── aisgng_triple_ring_growth.gif   # AiS-GNG成長アニメーション
+├── dense_graph_cliques.png         # 密グラフのクリーク可視化
+└── algorithm_comparison.txt        # アルゴリズム比較結果
 ```
 
 ### カスタマイズ
@@ -128,13 +159,16 @@ triangles = decompose_to_triangles(result.cliques)
 
 ```
 experiments/polygon_filling/
-├── README.md                 # このファイル
-├── polygon_utils.py          # クリーク検出・三角形分割ユーティリティ
-├── test_gng_triple_ring.py   # GNGトリプルリングテスト（GIF生成）
-├── test_dense_graph.py       # 密なグラフでのアルゴリズム比較
-└── samples/                  # 出力結果
-    ├── gng_triple_ring_final.png
-    ├── gng_triple_ring_growth.gif
+├── README.md                     # このファイル
+├── polygon_utils.py              # クリーク検出・三角形分割ユーティリティ
+├── test_gng_triple_ring.py       # GNGテスト（疎なグラフ）
+├── test_aisgng_triple_ring.py    # AiS-GNGテスト（密なグラフ）
+├── test_dense_graph.py           # アルゴリズム比較（コンソール）
+├── test_dense_graph_visual.py    # 密グラフの可視化
+└── samples/                      # 出力結果
+    ├── gng_triple_ring_*.png/gif
+    ├── aisgng_triple_ring_*.png/gif
+    ├── dense_graph_cliques.png
     └── algorithm_comparison.txt
 ```
 
