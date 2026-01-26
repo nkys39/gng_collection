@@ -160,6 +160,16 @@ scipy.spatial.Delaunay による明示的な三角形分割でトポロジーを
 |:------:|:---:|
 | ![GG Python](experiments/2d_visualization/samples/growing_grid/python/triple_ring_growth.gif) | ![GG C++](experiments/2d_visualization/samples/growing_grid/cpp/triple_ring_growth.gif) |
 
+## 3D可視化サンプル
+
+### GNG - 床と壁 (Floor + Wall)
+
+3Dデータでのトポロジー学習。床面（XZ平面）と壁面（XY平面）が直角に接続したL字型形状。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG 3D Floor+Wall](experiments/3d_pointcloud/samples/gng/python/floor_wall_growth.gif) | ![GNG 3D Final](experiments/3d_pointcloud/samples/gng/python/floor_wall_final.png) |
+
 ## 対応言語
 
 - Python
