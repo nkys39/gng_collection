@@ -174,20 +174,43 @@ def run_experiment(
     )
     gng.train(points, n_iterations=n_iterations, callback=callback)
 
-    # Save final frame with dual view (initial view + side view from YZ plane)
+    # Save final frame with dual view (3D perspective + 2D YZ side view)
     nodes, edges = gng.get_graph()
     plt.close(fig)
 
-    fig_final, axes = plt.subplots(1, 2, figsize=(16, 8), facecolor="white",
-                                    subplot_kw={"projection": "3d"})
+    fig_final = plt.figure(figsize=(16, 8), facecolor="white")
 
-    # Left: Initial view (azim=120)
-    create_frame(axes[0], points, nodes, edges, n_iterations, elev=25, azim=azim_start)
-    axes[0].set_title(f"GNG 3D - Perspective View ({len(nodes)} nodes)")
+    # Left: 3D perspective view
+    ax_3d = fig_final.add_subplot(1, 2, 1, projection="3d")
+    create_frame(ax_3d, points, nodes, edges, n_iterations, elev=25, azim=azim_start)
+    ax_3d.set_title(f"GNG 3D - Perspective View ({len(nodes)} nodes)")
 
-    # Right: Side view from YZ plane (Y horizontal, Z vertical, no X axis visible)
-    create_frame(axes[1], points, nodes, edges, n_iterations, elev=0, azim=0)
-    axes[1].set_title(f"GNG 3D - Side View (YZ plane)")
+    # Right: Pure 2D side view (YZ plane)
+    ax_2d = fig_final.add_subplot(1, 2, 2)
+
+    # Plot data points (Y, Z only)
+    ax_2d.scatter(points[:, 2], points[:, 1], c="skyblue", s=2, alpha=0.2, label="Data")
+
+    # Plot edges (Y, Z only)
+    for i, j in edges:
+        ax_2d.plot(
+            [nodes[i, 2], nodes[j, 2]],
+            [nodes[i, 1], nodes[j, 1]],
+            "r-",
+            linewidth=1.0,
+            alpha=0.7,
+        )
+
+    # Plot nodes (Y, Z only)
+    ax_2d.scatter(nodes[:, 2], nodes[:, 1], c="red", s=30, zorder=5, label="Nodes")
+
+    ax_2d.set_xlim(0, 1)
+    ax_2d.set_ylim(0, 1)
+    ax_2d.set_xlabel("Z")
+    ax_2d.set_ylabel("Y (height)")
+    ax_2d.set_aspect("equal")
+    ax_2d.set_title(f"GNG 3D - Side View (YZ plane)")
+    ax_2d.legend(loc="upper right")
 
     plt.tight_layout()
     plt.savefig(output_final, dpi=150, bbox_inches="tight", facecolor="white")
