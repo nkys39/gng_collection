@@ -265,3 +265,188 @@ def print_comparison(comparison: dict) -> None:
     print(f"  検出結果一致: {'Yes' if comparison['same_result'] else 'No'}")
     print(f"  速度向上率: {comparison['speedup']:.2f}x")
     print("=" * 50)
+
+
+# =============================================================================
+# エッジベースの三角形検出（GNGエッジで囲まれた領域を塗りつぶす）
+# =============================================================================
+
+def get_edge_based_triangles(
+    nodes: np.ndarray,
+    edges_per_node: dict[int, set[int]],
+) -> list[tuple[int, int, int]]:
+    """GNGエッジで囲まれた三角形を検出
+
+    Delaunay三角形分割を行い、3辺全てがGNGエッジとして存在する
+    三角形のみを抽出する。
+
+    Args:
+        nodes: ノード座標 (n_nodes, 2)
+        edges_per_node: 隣接リスト
+
+    Returns:
+        三角形のリスト [(a, b, c), ...]
+    """
+    from scipy.spatial import Delaunay
+
+    if len(nodes) < 3:
+        return []
+
+    # エッジセットを作成（高速検索用）
+    edge_set: set[tuple[int, int]] = set()
+    for node_id, neighbors in edges_per_node.items():
+        for neighbor_id in neighbors:
+            edge = tuple(sorted([node_id, neighbor_id]))
+            edge_set.add(edge)
+
+    # Delaunay三角形分割
+    try:
+        tri = Delaunay(nodes)
+    except Exception:
+        return []
+
+    # GNGエッジで囲まれた三角形のみを抽出
+    valid_triangles: list[tuple[int, int, int]] = []
+    for simplex in tri.simplices:
+        a, b, c = int(simplex[0]), int(simplex[1]), int(simplex[2])
+
+        # 3辺全てがGNGエッジとして存在するか確認
+        edge_ab = tuple(sorted([a, b]))
+        edge_bc = tuple(sorted([b, c]))
+        edge_ca = tuple(sorted([c, a]))
+
+        if edge_ab in edge_set and edge_bc in edge_set and edge_ca in edge_set:
+            valid_triangles.append((a, b, c))
+
+    return valid_triangles
+
+
+def get_all_graph_triangles(
+    edges_per_node: dict[int, set[int]],
+) -> list[tuple[int, int, int]]:
+    """グラフ内の全ての三角形（3サイクル）を検出
+
+    Delaunayを使わず、純粋にグラフ構造から三角形を検出。
+    クリーク検出と同じ結果になるが、K3のみを効率的に検出。
+
+    Args:
+        edges_per_node: 隣接リスト
+
+    Returns:
+        三角形のリスト [(a, b, c), ...]
+    """
+    triangles: list[tuple[int, int, int]] = []
+    seen: set[tuple[int, int, int]] = set()
+
+    for a in edges_per_node:
+        neighbors_a = edges_per_node[a]
+        for b in neighbors_a:
+            if b <= a:
+                continue
+            neighbors_b = edges_per_node.get(b, set())
+            # aとbの共通隣接ノードを探す
+            common = neighbors_a & neighbors_b
+            for c in common:
+                if c <= b:
+                    continue
+                tri = tuple(sorted([a, b, c]))
+                if tri not in seen:
+                    seen.add(tri)
+                    triangles.append((a, b, c))
+
+    return triangles
+
+
+@dataclass
+class TriangleResult:
+    """三角形検出結果"""
+    triangles: list[tuple[int, int, int]]
+    method: str  # "clique", "delaunay", "graph"
+    elapsed_time: float
+
+    def count(self) -> int:
+        return len(self.triangles)
+
+
+def compare_triangle_methods(
+    nodes: np.ndarray,
+    edges_per_node: dict[int, set[int]],
+    n_runs: int = 5,
+) -> dict:
+    """三角形検出方法の比較
+
+    Args:
+        nodes: ノード座標
+        edges_per_node: 隣接リスト
+        n_runs: 計測回数
+
+    Returns:
+        比較結果
+    """
+    active_ids = list(edges_per_node.keys())
+
+    # 方法1: 極大クリーク → 三角形分割
+    clique_times = []
+    for _ in range(n_runs):
+        start = time.perf_counter()
+        result = bron_kerbosch_pivot(edges_per_node, active_ids, min_size=3)
+        triangles_clique = decompose_to_triangles(result.cliques)
+        clique_times.append(time.perf_counter() - start)
+
+    # 方法2: Delaunay + GNGエッジフィルタ（scipyが利用可能な場合のみ）
+    triangles_delaunay = []
+    delaunay_times = [0.0]
+    try:
+        for _ in range(n_runs):
+            start = time.perf_counter()
+            triangles_delaunay = get_edge_based_triangles(nodes, edges_per_node)
+            delaunay_times.append(time.perf_counter() - start)
+        delaunay_times = delaunay_times[1:]  # 最初の0.0を除去
+    except ImportError:
+        pass  # scipyがない場合はスキップ
+
+    # 方法3: グラフ構造から直接検出
+    graph_times = []
+    for _ in range(n_runs):
+        start = time.perf_counter()
+        triangles_graph = get_all_graph_triangles(edges_per_node)
+        graph_times.append(time.perf_counter() - start)
+
+    return {
+        "clique": {
+            "count": len(triangles_clique),
+            "avg_time_ms": sum(clique_times) / len(clique_times) * 1000,
+            "triangles": triangles_clique,
+        },
+        "delaunay": {
+            "count": len(triangles_delaunay),
+            "avg_time_ms": sum(delaunay_times) / len(delaunay_times) * 1000 if delaunay_times else 0,
+            "triangles": triangles_delaunay,
+        },
+        "graph": {
+            "count": len(triangles_graph),
+            "avg_time_ms": sum(graph_times) / len(graph_times) * 1000,
+            "triangles": triangles_graph,
+        },
+    }
+
+
+def print_triangle_comparison(comparison: dict) -> None:
+    """三角形検出方法の比較結果を出力"""
+    print("=" * 50)
+    print("三角形検出方法の比較")
+    print("=" * 50)
+
+    print("\n【極大クリーク → 三角形分割】")
+    print(f"  検出数: {comparison['clique']['count']}個")
+    print(f"  実行時間: {comparison['clique']['avg_time_ms']:.3f} ms")
+
+    print("\n【Delaunay + GNGエッジフィルタ】")
+    print(f"  検出数: {comparison['delaunay']['count']}個")
+    print(f"  実行時間: {comparison['delaunay']['avg_time_ms']:.3f} ms")
+
+    print("\n【グラフ構造から直接検出】")
+    print(f"  検出数: {comparison['graph']['count']}個")
+    print(f"  実行時間: {comparison['graph']['avg_time_ms']:.3f} ms")
+
+    print("=" * 50)
