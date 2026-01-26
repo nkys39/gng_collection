@@ -186,6 +186,30 @@ Utility付きGNG。低利用ノードを削除して非定常分布に対応。
 |:--------:|:--------:|
 | ![GNG-U2 3D](experiments/3d_pointcloud/samples/gng_u2/python/floor_wall_growth.gif) | ![GNG-U2 3D Final](experiments/3d_pointcloud/samples/gng_u2/python/floor_wall_final.png) |
 
+### AiS-GNG
+
+Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![AiS-GNG 3D](experiments/3d_pointcloud/samples/ais_gng/python/floor_wall_growth.gif) | ![AiS-GNG 3D Final](experiments/3d_pointcloud/samples/ais_gng/python/floor_wall_final.png) |
+
+### GNG-T
+
+ヒューリスティック三角形分割。エッジ交差を検出して削除。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-T 3D](experiments/3d_pointcloud/samples/gng_t/python/floor_wall_growth.gif) | ![GNG-T 3D Final](experiments/3d_pointcloud/samples/gng_t/python/floor_wall_final.png) |
+
+### GNG-D
+
+明示的Delaunay三角形分割。scipy.spatialを使用。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-D 3D](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_growth.gif) | ![GNG-D 3D Final](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_final.png) |
+
 ## 対応言語
 
 - Python
