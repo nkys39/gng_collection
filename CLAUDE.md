@@ -164,8 +164,8 @@ git add -f experiments/2d_visualization/samples/
 | GNG         | ✓      | ✓   | 標準 Growing Neural Gas |
 | GNG (Kubota)| ✓      | -   | Kubotalab論文準拠版（最長エッジ方式） |
 | GNG-U       | ✓      | ✓   | Utility付きGNG（非定常分布対応） |
-| GNG-U2      | ✓      | -   | GNG-U改良版（κ間隔Utilityチェック、AiS-GNGのベース） |
-| AiS-GNG     | ✓      | -   | Add-if-Silentルール付きGNG（高密度位相構造の高速生成） |
+| GNG-U2      | ✓      | ✓   | GNG-U改良版（κ間隔Utilityチェック、AiS-GNGのベース） |
+| AiS-GNG     | ✓      | ✓   | Add-if-Silentルール付きGNG（高密度位相構造の高速生成） |
 | GNG-T       | ✓      | ✓   | ヒューリスティック三角形分割（Kubota 2008） |
 | GNG-T (Kubota)| ✓    | -   | Kubotalab論文完全準拠版（γ式使用） |
 | GNG-D       | ✓      | -   | 明示的Delaunay三角形分割（scipy.spatial） |

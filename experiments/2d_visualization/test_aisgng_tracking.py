@@ -163,7 +163,7 @@ def run_tracking_experiment(
         beta=0.01,        # Higher decay to forget old positions
         chi=0.01,         # Utility decay rate
         max_age=30,       # Shorter edge age for faster adaptation
-        utility_k=500.0,  # Lower threshold for faster cleanup
+        utility_k=50.0,   # Optimal for Euclidean distance (from comparison experiments)
         kappa=5,          # More frequent utility checks
         # Add-if-Silent tolerances for tracking (smaller for finer structure)
         theta_ais_min=0.01,

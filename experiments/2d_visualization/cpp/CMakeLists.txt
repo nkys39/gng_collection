@@ -13,6 +13,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng_t/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/neural_gas/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng_u/cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng_u2/cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/ais_gng/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/som/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gcs/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/hcl/cpp)
@@ -46,6 +48,14 @@ target_link_libraries(test_ng_triple_ring Eigen3::Eigen)
 # GNG-U Triple ring test
 add_executable(test_gngu_triple_ring test_gngu_triple_ring.cpp)
 target_link_libraries(test_gngu_triple_ring Eigen3::Eigen)
+
+# GNG-U2 Triple ring test
+add_executable(test_gngu2_triple_ring test_gngu2_triple_ring.cpp)
+target_link_libraries(test_gngu2_triple_ring Eigen3::Eigen)
+
+# AiS-GNG Triple ring test
+add_executable(test_aisgng_triple_ring test_aisgng_triple_ring.cpp)
+target_link_libraries(test_aisgng_triple_ring Eigen3::Eigen)
 
 # SOM Triple ring test
 add_executable(test_som_triple_ring test_som_triple_ring.cpp)
