@@ -185,8 +185,8 @@ def run_experiment(
     create_frame(axes[0], points, nodes, edges, n_iterations, elev=25, azim=azim_start)
     axes[0].set_title(f"GNG 3D - Perspective View ({len(nodes)} nodes)")
 
-    # Right: Side view from YZ plane (looking along X axis)
-    create_frame(axes[1], points, nodes, edges, n_iterations, elev=0, azim=0)
+    # Right: Side view from YZ plane (looking along negative X axis, from back)
+    create_frame(axes[1], points, nodes, edges, n_iterations, elev=0, azim=-90)
     axes[1].set_title(f"GNG 3D - Side View (YZ plane)")
 
     plt.tight_layout()
