@@ -2,17 +2,18 @@
 
 Based on:
     - Toda, Y., et al. (2022). "GNG with Different Topologies for 3D Point Cloud"
-    - Reference implementation: toda_gngdt (C)
+    - Reference implementation: toda_gngdt (C) - gng_livox/src/gng.c
 
 GNG-DT learns multiple independent edge topologies based on different properties:
-    - Position topology: Standard GNG edges based on spatial proximity
-    - Color topology: Edges based on color similarity (threshold-based)
-    - Normal topology: Edges based on normal vector similarity (dot product threshold)
+    - Position topology (edge): Standard GNG edges based on spatial proximity
+    - Color topology (cedge): Edges based on color similarity (threshold-based)
+    - Normal topology (nedge): Edges based on normal vector similarity (dot product)
 
-Key difference from standard GNG:
-    - Winner selection uses ONLY position information
-    - Each property (color, normal) has its own independent edge topology
-    - Normal vectors are computed via PCA on neighbor node positions
+Key features from original code:
+    - Winner selection uses ONLY position information (first 3 dimensions)
+    - Normal vectors are computed via PCA on winner + neighbor positions EVERY iteration
+    - Normal edge (nedge) is updated ONLY between s1 and s2 (the two winners)
+    - Normal is stored in node dimensions [4-6]
 
 See REFERENCE.md for details.
 """
@@ -30,18 +31,19 @@ import numpy as np
 class GNGDTParams:
     """GNG-DT hyperparameters.
 
+    Based on original toda_gngdt/gng.c parameters.
+
     Attributes:
-        max_nodes: Maximum number of nodes.
-        lambda_: Node insertion interval (every lambda_ iterations).
-        eps_b: Learning rate for the winner node (η1 in paper).
-        eps_n: Learning rate for neighbor nodes (η2 in paper).
+        max_nodes: Maximum number of nodes (GNGN in original).
+        lambda_: Node insertion interval (ramda in original = 200).
+        eps_b: Learning rate for the winner node (e1 = 0.05 in original).
+        eps_n: Learning rate for neighbor nodes (e2 = 0.0005 in original).
         alpha: Error decay rate when splitting.
-        beta: Global error decay rate.
-        max_age: Maximum edge age before removal (g_max in paper).
-        tau_color: Color similarity threshold (τ^col in paper).
-        tau_normal: Normal similarity threshold as dot product (τ^nor in paper).
-            Higher value means more similar (1.0 = identical, 0.0 = perpendicular).
-        pca_min_neighbors: Minimum neighbors for PCA normal computation.
+        beta: Global error decay rate (dise in original = 0.0005).
+        max_age: Maximum edge age before removal (MAX_AGE = 88 in original).
+        tau_color: Color similarity threshold (cthv = 0.05 in original).
+        tau_normal: Normal similarity threshold (nthv = 0.998 in original).
+            Edge created if |dot product| > tau_normal.
     """
 
     max_nodes: int = 100
@@ -49,57 +51,59 @@ class GNGDTParams:
     eps_b: float = 0.05  # Original: e1 = 0.05
     eps_n: float = 0.0005  # Original: e2 = 0.0005
     alpha: float = 0.5
-    beta: float = 0.005
+    beta: float = 0.0005  # Original: dise = 0.0005
     max_age: int = 88  # Original: MAX_AGE = 88
     # GNG-DT specific parameters
-    tau_color: float = 0.05  # Original: cthv = 0.05 (Euclidean distance)
-    tau_normal: float = 0.998  # Original: nthv = 0.998 (|dot product| > 0.998)
-    pca_min_neighbors: int = 3  # Minimum neighbors for PCA
+    tau_color: float = 0.05  # Original: cthv = 0.05
+    tau_normal: float = 0.998  # Original: nthv = 0.998
 
 
 @dataclass
 class GNGDTNode:
     """A neuron node in the GNG-DT network.
 
+    Mirrors the original node structure:
+        node[0-2]: position (x, y, z)
+        node[3]: color (simplified, original has LDIM dimensions)
+        node[4-6]: normal vector (nx, ny, nz)
+
     Attributes:
         id: Node ID (-1 means invalid/removed).
         position: 3D position vector.
-        color: RGB color vector (normalized to [0, 1]).
-        normal: Normal vector (unit vector).
-        error: Accumulated error.
+        color: RGB color vector.
+        normal: Normal vector (unit vector, computed via PCA).
+        error: Accumulated error (gng_err).
+        utility: Utility value (gng_u).
     """
 
     id: int = -1
-    position: np.ndarray = field(default_factory=lambda: np.array([]))
-    color: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 0.0]))
+    position: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    color: np.ndarray = field(default_factory=lambda: np.zeros(3))
     normal: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 1.0]))
-    error: float = 1.0
+    error: float = 0.0
+    utility: float = 0.0
 
 
 class GrowingNeuralGasDT:
     """GNG-DT (Different Topologies) algorithm implementation.
 
-    This implementation follows the GNG-DT paper by Toda et al. (2022).
-    It maintains multiple independent edge topologies for different properties.
+    Faithfully implements the original toda_gngdt/gng.c algorithm.
+
+    Key behaviors from original:
+        1. Winner selection uses ONLY position (node[0-2])
+        2. Normal computed via PCA on s1 + neighbors EVERY iteration
+        3. nedge updated ONLY between s1 and s2
+        4. cedge updated between s1 and s2 based on color difference
+        5. Edge age incremented for all s1's neighbors
 
     Attributes:
         params: GNG-DT hyperparameters.
         nodes: List of neuron nodes.
-        edges_pos: Position-based edge age matrix.
+        edges_pos: Position-based edge age matrix (0 = no edge).
         edges_color: Color-based edge connectivity matrix.
         edges_normal: Normal-based edge connectivity matrix.
-        edges_per_node: Adjacency list for position edges (quick neighbor lookup).
+        edges_per_node: Adjacency list for position edges.
         n_learning: Total number of learning iterations.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from model import GrowingNeuralGasDT, GNGDTParams
-    >>> # Sample 3D points with position and color
-    >>> points = np.random.rand(1000, 3)  # Just position
-    >>> gng = GrowingNeuralGasDT(params=GNGDTParams())
-    >>> gng.train(points, n_iterations=5000)
-    >>> nodes, pos_edges, normal_edges = gng.get_multi_graph()
     """
 
     def __init__(
@@ -113,209 +117,168 @@ class GrowingNeuralGasDT:
             params: GNG-DT hyperparameters. Uses defaults if None.
             seed: Random seed for reproducibility.
         """
-        self.n_dim = 3  # GNG-DT is for 3D point clouds
         self.params = params or GNGDTParams()
         self.rng = np.random.default_rng(seed)
 
-        # Node management (fixed-size array)
-        self.nodes: list[GNGDTNode] = [
-            GNGDTNode() for _ in range(self.params.max_nodes)
-        ]
-        self._addable_indices: deque[int] = deque(range(self.params.max_nodes))
-
-        # Multiple edge topologies
         max_n = self.params.max_nodes
 
-        # Position edges: age matrix (0 = no edge, >=1 = connected with age)
-        self.edges_pos = np.zeros((max_n, max_n), dtype=np.int32)
+        # Node management
+        self.nodes: list[GNGDTNode] = [GNGDTNode() for _ in range(max_n)]
+        self._addable_indices: deque[int] = deque(range(max_n))
+
+        # Edge matrices (like original: edge, cedge, nedge, age)
+        self.edges_pos = np.zeros((max_n, max_n), dtype=np.int32)  # edge
+        self.edges_color = np.zeros((max_n, max_n), dtype=np.int32)  # cedge
+        self.edges_normal = np.zeros((max_n, max_n), dtype=np.int32)  # nedge
+        self.edge_age = np.zeros((max_n, max_n), dtype=np.int32)  # age
+
+        # Adjacency list for quick neighbor lookup
         self.edges_per_node: dict[int, set[int]] = {}
-
-        # Color edges: binary connectivity (0 = no edge, 1 = connected)
-        self.edges_color = np.zeros((max_n, max_n), dtype=np.int32)
-
-        # Normal edges: binary connectivity (0 = no edge, 1 = connected)
-        self.edges_normal = np.zeros((max_n, max_n), dtype=np.int32)
 
         # Counters
         self.n_learning = 0
         self._n_trial = 0
 
-        # Initialize with 2 random nodes
+        # Initialize with 2 random nodes (like original init_gng)
         self._init_nodes()
 
     def _init_nodes(self) -> None:
-        """Initialize with 2 random nodes."""
-        for _ in range(2):
-            position = self.rng.random(3).astype(np.float32)
-            self._add_node(position)
+        """Initialize with 2 random nodes connected by edges."""
+        for i in range(2):
+            pos = self.rng.random(3).astype(np.float64)
+            self._add_node(pos)
 
-    def _add_node(
-        self,
-        position: np.ndarray,
-        color: np.ndarray | None = None,
-        normal: np.ndarray | None = None,
-    ) -> int:
-        """Add a new node with given properties.
+        # Connect initial 2 nodes (like original)
+        self.edges_pos[0, 1] = 1
+        self.edges_pos[1, 0] = 1
+        self.edges_color[0, 1] = 1
+        self.edges_color[1, 0] = 1
+        self.edges_normal[0, 1] = 1
+        self.edges_normal[1, 0] = 1
+        self.edges_per_node[0] = {1}
+        self.edges_per_node[1] = {0}
+
+    def _add_node(self, position: np.ndarray, color: np.ndarray | None = None) -> int:
+        """Add a new node.
 
         Args:
             position: 3D position vector.
             color: RGB color vector (optional).
-            normal: Normal vector (optional).
 
         Returns:
             ID of the new node, or -1 if no space.
         """
         if not self._addable_indices:
-            return -1  # No space
+            return -1
 
         node_id = self._addable_indices.popleft()
         self.nodes[node_id] = GNGDTNode(
             id=node_id,
             position=position.copy(),
-            color=color.copy() if color is not None else np.array([0.0, 0.0, 0.0]),
-            normal=normal.copy() if normal is not None else np.array([0.0, 0.0, 1.0]),
-            error=1.0,
+            color=color.copy() if color is not None else np.zeros(3),
+            normal=np.array([0.0, 0.0, 1.0]),
+            error=0.0,
+            utility=0.0,
         )
         self.edges_per_node[node_id] = set()
         return node_id
 
     def _remove_node(self, node_id: int) -> None:
-        """Remove a node (only if isolated in position topology).
-
-        Args:
-            node_id: ID of node to remove.
-        """
-        if self.edges_per_node.get(node_id):
-            return  # Has edges, don't remove
-
-        # Clear all edge topologies
-        for other_id in range(self.params.max_nodes):
-            self.edges_color[node_id, other_id] = 0
-            self.edges_color[other_id, node_id] = 0
-            self.edges_normal[node_id, other_id] = 0
-            self.edges_normal[other_id, node_id] = 0
+        """Remove a node (like original node_delete)."""
+        # Clear all edges involving this node
+        for other_id in list(self.edges_per_node.get(node_id, set())):
+            self._remove_all_edges(node_id, other_id)
 
         self.edges_per_node.pop(node_id, None)
         self.nodes[node_id].id = -1
         self._addable_indices.append(node_id)
 
-    def _add_edge_pos(self, node1: int, node2: int) -> None:
-        """Add or reset position edge between two nodes.
+    def _add_position_edge(self, n1: int, n2: int) -> None:
+        """Add position edge between two nodes."""
+        if self.edges_pos[n1, n2] == 0:
+            self.edges_pos[n1, n2] = 1
+            self.edges_pos[n2, n1] = 1
+            self.edges_per_node[n1].add(n2)
+            self.edges_per_node[n2].add(n1)
 
-        Args:
-            node1: First node ID.
-            node2: Second node ID.
-        """
-        if self.edges_pos[node1, node2] > 0:
-            # Edge exists, reset age
-            self.edges_pos[node1, node2] = 1
-            self.edges_pos[node2, node1] = 1
-        else:
-            # New edge
-            self.edges_per_node[node1].add(node2)
-            self.edges_per_node[node2].add(node1)
-            self.edges_pos[node1, node2] = 1
-            self.edges_pos[node2, node1] = 1
-
-    def _remove_edge_pos(self, node1: int, node2: int) -> None:
-        """Remove position edge between two nodes.
-
-        Args:
-            node1: First node ID.
-            node2: Second node ID.
-        """
-        self.edges_per_node[node1].discard(node2)
-        self.edges_per_node[node2].discard(node1)
-        self.edges_pos[node1, node2] = 0
-        self.edges_pos[node2, node1] = 0
-
-    def _update_property_edges(self, node1: int, node2: int) -> None:
-        """Update color and normal edges based on thresholds.
-
-        This is called after position edge is created/updated.
-        Property edges are independent of position edges.
-
-        Args:
-            node1: First node ID.
-            node2: Second node ID.
-        """
-        p = self.params
-        n1 = self.nodes[node1]
-        n2 = self.nodes[node2]
-
-        # Color edge: connected if color difference < tau_color
-        color_diff = np.linalg.norm(n1.color - n2.color)
-        if color_diff < p.tau_color:
-            self.edges_color[node1, node2] = 1
-            self.edges_color[node2, node1] = 1
-        else:
-            self.edges_color[node1, node2] = 0
-            self.edges_color[node2, node1] = 0
-
-        # Normal edge: connected if |dot product| > tau_normal
-        # Original uses fabs() to handle normals pointing in opposite directions
-        dot_product = np.abs(np.dot(n1.normal, n2.normal))
-        if dot_product > p.tau_normal:
-            self.edges_normal[node1, node2] = 1
-            self.edges_normal[node2, node1] = 1
-        else:
-            self.edges_normal[node1, node2] = 0
-            self.edges_normal[node2, node1] = 0
+    def _remove_all_edges(self, n1: int, n2: int) -> None:
+        """Remove all edges between two nodes (like original when age > MAX_AGE)."""
+        self.edges_pos[n1, n2] = 0
+        self.edges_pos[n2, n1] = 0
+        self.edges_color[n1, n2] = 0
+        self.edges_color[n2, n1] = 0
+        self.edges_normal[n1, n2] = 0
+        self.edges_normal[n2, n1] = 0
+        self.edge_age[n1, n2] = 0
+        self.edge_age[n2, n1] = 0
+        self.edges_per_node[n1].discard(n2)
+        self.edges_per_node[n2].discard(n1)
 
     def _compute_normal_pca(self, node_id: int) -> np.ndarray:
-        """Compute normal vector using PCA on neighbor positions.
+        """Compute normal vector using PCA on node + neighbor positions.
 
-        The normal is the eigenvector corresponding to the smallest eigenvalue.
+        Follows original gng.c:712-728:
+            - Collect s1's position and all position-edge neighbors
+            - Compute PCA
+            - Normal = eigenvector of smallest eigenvalue
+            - Normalize to unit length
 
         Args:
-            node_id: Node ID.
+            node_id: Node ID (s1 in original).
 
         Returns:
             Unit normal vector.
         """
-        neighbors = list(self.edges_per_node.get(node_id, set()))
-        if len(neighbors) < self.params.pca_min_neighbors:
-            # Not enough neighbors, keep current normal
-            return self.nodes[node_id].normal.copy()
+        # Collect positions: s1 + all neighbors with position edge
+        positions = [self.nodes[node_id].position.copy()]
+        for neighbor_id in self.edges_per_node.get(node_id, set()):
+            if self.nodes[neighbor_id].id != -1:
+                positions.append(self.nodes[neighbor_id].position.copy())
 
-        # Collect neighbor positions including self
-        positions = [self.nodes[node_id].position]
-        for nid in neighbors:
-            if self.nodes[nid].id != -1:
-                positions.append(self.nodes[nid].position)
-
-        if len(positions) < self.params.pca_min_neighbors:
-            return self.nodes[node_id].normal.copy()
+        ect = len(positions)
+        if ect < 2:
+            # Not enough points for PCA, return default
+            return np.array([0.0, 0.0, 1.0])
 
         positions = np.array(positions)
 
+        # Compute centroid (cog in original)
+        cog = np.mean(positions, axis=0)
+
         # Compute covariance matrix
-        centroid = np.mean(positions, axis=0)
-        centered = positions - centroid
-        cov = np.dot(centered.T, centered) / len(positions)
+        centered = positions - cog
+        cov = np.dot(centered.T, centered) / ect
 
         # Eigenvalue decomposition
         try:
             eigenvalues, eigenvectors = np.linalg.eigh(cov)
             # Smallest eigenvalue corresponds to normal direction
-            normal = eigenvectors[:, 0]
-            # Ensure consistent orientation (pointing up-ish if vertical surface)
-            if normal[2] < 0:
+            normal = eigenvectors[:, 0].copy()
+
+            # Original: if (ev1[1] < 0) multiply by -1
+            # This ensures consistent orientation (y-component positive)
+            if normal[1] < 0:
                 normal = -normal
+
+            # Normalize (original uses invSqrt)
+            norm = np.linalg.norm(normal)
+            if norm > 1e-10:
+                normal = normal / norm
+
             return normal
         except np.linalg.LinAlgError:
-            return self.nodes[node_id].normal.copy()
+            return np.array([0.0, 0.0, 1.0])
 
-    def _find_two_nearest(self, position: np.ndarray) -> tuple[int, int]:
+    def _find_two_nearest(self, position: np.ndarray) -> tuple[int, int, float, float]:
         """Find the two nearest nodes to input position.
 
-        Winner selection uses ONLY position (key GNG-DT feature).
+        Winner selection uses ONLY position (original gng.c:914-948).
 
         Args:
             position: Input 3D position vector.
 
         Returns:
-            Tuple of (winner_id, second_winner_id).
+            Tuple of (s1_id, s2_id, dist1_sq, dist2_sq).
         """
         min_dist1 = float("inf")
         min_dist2 = float("inf")
@@ -326,154 +289,224 @@ class GrowingNeuralGasDT:
             if node.id == -1:
                 continue
 
-            # Distance based on POSITION ONLY
-            dist = np.sum((position - node.position) ** 2)
+            # Distance based on POSITION ONLY (first 3 dimensions)
+            dist_sq = np.sum((position - node.position) ** 2)
 
-            if dist < min_dist1:
+            if dist_sq < min_dist1:
                 min_dist2 = min_dist1
                 s2_id = s1_id
-                min_dist1 = dist
+                min_dist1 = dist_sq
                 s1_id = node.id
-            elif dist < min_dist2:
-                min_dist2 = dist
+            elif dist_sq < min_dist2:
+                min_dist2 = dist_sq
                 s2_id = node.id
 
-        return s1_id, s2_id
+        return s1_id, s2_id, min_dist1, min_dist2
+
+    def _gng_learn(
+        self,
+        s1: int,
+        s2: int,
+        v_pos: np.ndarray,
+        v_color: np.ndarray | None,
+        e1: float,
+        e2: float,
+    ) -> None:
+        """Single learning step (mirrors original gng_learn function).
+
+        Args:
+            s1: First winner node ID.
+            s2: Second winner node ID.
+            v_pos: Input position vector.
+            v_color: Input color vector (optional).
+            e1: Winner learning rate.
+            e2: Neighbor learning rate.
+        """
+        p = self.params
+        n1 = self.nodes[s1]
+        n2 = self.nodes[s2]
+
+        # Add position edge if not exists (original gng.c:611-616)
+        self._add_position_edge(s1, s2)
+
+        # Calculate color distance and update cedge (original gng.c:618-630)
+        if v_color is not None:
+            color_dist_sq = np.sum((n1.color - n2.color) ** 2)
+            if color_dist_sq < p.tau_color * p.tau_color:
+                self.edges_color[s1, s2] = 1
+                self.edges_color[s2, s1] = 1
+            else:
+                self.edges_color[s1, s2] = 0
+                self.edges_color[s2, s1] = 0
+
+        # Calculate normal dot product BEFORE updating normal (original gng.c:632-635)
+        normal_dot = np.dot(n1.normal, n2.normal)
+
+        # Reset edge age between s1 and s2 (original gng.c:645-646)
+        self.edge_age[s1, s2] = 0
+        self.edge_age[s2, s1] = 0
+
+        # Update winner position (original gng.c:650-652)
+        n1.position += e1 * (v_pos - n1.position)
+
+        # Update winner color if provided
+        if v_color is not None:
+            n1.color += e1 * (v_color - n1.color)
+
+        # Update neighbors and handle edge aging (original gng.c:655-695)
+        neighbors_to_remove = []
+        for neighbor_id in list(self.edges_per_node[s1]):
+            if neighbor_id == s1:
+                continue
+
+            neighbor = self.nodes[neighbor_id]
+
+            # Move neighbor toward input (original gng.c:657-658)
+            neighbor.position += e2 * (v_pos - neighbor.position)
+
+            # Increment edge age (original gng.c:660-661)
+            self.edge_age[s1, neighbor_id] += 1
+            self.edge_age[neighbor_id, s1] += 1
+
+            # Check age threshold (original gng.c:673-694)
+            if self.edge_age[s1, neighbor_id] > p.max_age:
+                neighbors_to_remove.append(neighbor_id)
+
+        # Remove old edges and isolated nodes
+        for neighbor_id in neighbors_to_remove:
+            self._remove_all_edges(s1, neighbor_id)
+            if not self.edges_per_node.get(neighbor_id):
+                self._remove_node(neighbor_id)
+
+        # Update color neighbors (original gng.c:697-699)
+        if v_color is not None:
+            for i in range(len(self.nodes)):
+                if self.nodes[i].id != -1 and self.edges_color[s1, i] == 1 and i != s1:
+                    self.nodes[i].color += e2 * (v_color - self.nodes[i].color)
+
+        # Compute normal via PCA (original gng.c:712-728)
+        n1.normal = self._compute_normal_pca(s1)
+
+        # Update nedge between s1 and s2 based on normal dot product (original gng.c:741-748)
+        # NOTE: Uses the dot product calculated BEFORE the PCA update
+        if np.abs(normal_dot) > p.tau_normal:
+            self.edges_normal[s1, s2] = 1
+            self.edges_normal[s2, s1] = 1
+        else:
+            self.edges_normal[s1, s2] = 0
+            self.edges_normal[s2, s1] = 0
+
+    def _discount_errors(self) -> None:
+        """Decay all node errors (original discount_err_gng)."""
+        p = self.params
+        for node in self.nodes:
+            if node.id == -1:
+                continue
+            node.error -= p.beta * node.error
+            node.utility -= p.beta * node.utility
+            if node.error < 0:
+                node.error = 0.0
+            if node.utility < 0:
+                node.utility = 0.0
+
+    def _node_add(self) -> None:
+        """Add a new node (original node_add_gng)."""
+        if not self._addable_indices:
+            return
+
+        # Find node q with maximum error
+        max_err = -1.0
+        q = -1
+        for node in self.nodes:
+            if node.id != -1 and node.error > max_err:
+                max_err = node.error
+                q = node.id
+
+        if q == -1:
+            return
+
+        # Find neighbor f of q with maximum error
+        max_err_f = -1.0
+        f = -1
+        for neighbor_id in self.edges_per_node.get(q, set()):
+            if self.nodes[neighbor_id].error > max_err_f:
+                max_err_f = self.nodes[neighbor_id].error
+                f = neighbor_id
+
+        if f == -1:
+            return
+
+        # Add new node r between q and f (original gng.c:483-485)
+        new_pos = 0.5 * (self.nodes[q].position + self.nodes[f].position)
+        new_color = 0.5 * (self.nodes[q].color + self.nodes[f].color)
+        r = self._add_node(new_pos, new_color)
+
+        if r == -1:
+            return
+
+        # Update edges (original gng.c:487-528)
+        # Remove edge between q and f
+        self.edges_pos[q, f] = 0
+        self.edges_pos[f, q] = 0
+        self.edges_per_node[q].discard(f)
+        self.edges_per_node[f].discard(q)
+
+        # Inherit cedge and nedge for new node
+        self.edges_color[q, r] = self.edges_color[q, f]
+        self.edges_color[r, q] = self.edges_color[q, f]
+        self.edges_color[f, r] = self.edges_color[q, f]
+        self.edges_color[r, f] = self.edges_color[q, f]
+        self.edges_color[q, f] = 0
+        self.edges_color[f, q] = 0
+
+        self.edges_normal[q, r] = self.edges_normal[q, f]
+        self.edges_normal[r, q] = self.edges_normal[q, f]
+        self.edges_normal[f, r] = self.edges_normal[q, f]
+        self.edges_normal[r, f] = self.edges_normal[q, f]
+        self.edges_normal[q, f] = 0
+        self.edges_normal[f, q] = 0
+
+        # Add position edges q-r and r-f
+        self._add_position_edge(q, r)
+        self._add_position_edge(r, f)
+
+        # Update errors (original gng.c:530-537)
+        self.nodes[q].error *= 0.5
+        self.nodes[f].error *= 0.5
+        self.nodes[q].utility *= 0.5
+        self.nodes[f].utility *= 0.5
+        self.nodes[r].error = self.nodes[q].error
+        self.nodes[r].utility = self.nodes[q].utility
 
     def _one_train_update(
         self,
         position: np.ndarray,
         color: np.ndarray | None = None,
     ) -> None:
-        """Single training iteration.
-
-        Args:
-            position: Input 3D position vector.
-            color: Optional RGB color vector.
-        """
+        """Single training iteration (mirrors original learn_epoch + gng_main)."""
         p = self.params
 
-        # Decay all errors
-        for node in self.nodes:
-            if node.id == -1:
-                continue
-            node.error -= p.beta * node.error
+        # Find two nearest nodes
+        s1, s2, dist1_sq, dist2_sq = self._find_two_nearest(position)
 
-        # Find two nearest nodes (using position only)
-        s1_id, s2_id = self._find_two_nearest(position)
-
-        if s1_id == -1 or s2_id == -1:
+        if s1 == -1 or s2 == -1:
             return
 
-        # Update winner error
-        dist_sq = np.sum((position - self.nodes[s1_id].position) ** 2)
-        self.nodes[s1_id].error += dist_sq
+        # Update accumulated error and utility (original gng.c:960-962)
+        self.nodes[s1].error += dist1_sq
+        self.nodes[s1].utility += dist2_sq - dist1_sq
 
-        # Move winner toward sample
-        self.nodes[s1_id].position += p.eps_b * (
-            position - self.nodes[s1_id].position
-        )
+        # Learning step
+        self._gng_learn(s1, s2, position, color, p.eps_b, p.eps_n)
 
-        # Update winner color if provided
-        if color is not None:
-            self.nodes[s1_id].color += p.eps_b * (color - self.nodes[s1_id].color)
+        # Decay errors (original discount_err_gng called in learn_epoch)
+        self._discount_errors()
 
-        # Connect s1 and s2 (position topology)
-        self._add_edge_pos(s1_id, s2_id)
-
-        # Update property edges between s1 and s2
-        self._update_property_edges(s1_id, s2_id)
-
-        # Update neighbors and age edges
-        edges_to_remove = []
-        for neighbor_id in list(self.edges_per_node[s1_id]):
-            if self.edges_pos[s1_id, neighbor_id] > p.max_age:
-                edges_to_remove.append(neighbor_id)
-            else:
-                # Move neighbor toward sample
-                self.nodes[neighbor_id].position += p.eps_n * (
-                    position - self.nodes[neighbor_id].position
-                )
-                # Update neighbor color if provided
-                if color is not None:
-                    self.nodes[neighbor_id].color += p.eps_n * (
-                        color - self.nodes[neighbor_id].color
-                    )
-                # Increment edge age
-                self.edges_pos[s1_id, neighbor_id] += 1
-                self.edges_pos[neighbor_id, s1_id] += 1
-
-        # Remove old edges and isolated nodes
-        for neighbor_id in edges_to_remove:
-            self._remove_edge_pos(s1_id, neighbor_id)
-            if not self.edges_per_node.get(neighbor_id):
-                self._remove_node(neighbor_id)
-
-        # Periodically update normals using PCA
-        if self.n_learning % 50 == 0:
-            self.nodes[s1_id].normal = self._compute_normal_pca(s1_id)
-            # Update normal edges for all neighbors
-            for neighbor_id in self.edges_per_node.get(s1_id, set()):
-                self._update_property_edges(s1_id, neighbor_id)
-
-        # Periodically add new node
+        # Periodically add new node (original gng_main)
         self._n_trial += 1
         if self._n_trial >= p.lambda_:
             self._n_trial = 0
-
-            if self._addable_indices:
-                # Find node with maximum error
-                max_err_q = 0.0
-                q_id = -1
-                for node in self.nodes:
-                    if node.id == -1:
-                        continue
-                    if node.error > max_err_q:
-                        max_err_q = node.error
-                        q_id = node.id
-
-                if q_id == -1:
-                    self.n_learning += 1
-                    return
-
-                # Find neighbor of q with maximum error
-                max_err_f = 0.0
-                f_id = -1
-                for neighbor_id in self.edges_per_node.get(q_id, set()):
-                    if self.nodes[neighbor_id].error > max_err_f:
-                        max_err_f = self.nodes[neighbor_id].error
-                        f_id = neighbor_id
-
-                if f_id == -1:
-                    self.n_learning += 1
-                    return
-
-                # Add new node between q and f
-                new_pos = (
-                    self.nodes[q_id].position + self.nodes[f_id].position
-                ) * 0.5
-                new_color = (self.nodes[q_id].color + self.nodes[f_id].color) * 0.5
-                new_id = self._add_node(new_pos, new_color)
-
-                if new_id == -1:
-                    self.n_learning += 1
-                    return
-
-                # Update edges
-                self._remove_edge_pos(q_id, f_id)
-                self._add_edge_pos(q_id, new_id)
-                self._add_edge_pos(f_id, new_id)
-
-                # Update property edges for new node
-                self._update_property_edges(q_id, new_id)
-                self._update_property_edges(f_id, new_id)
-
-                # Update errors
-                self.nodes[q_id].error *= 1 - p.alpha
-                self.nodes[f_id].error *= 1 - p.alpha
-                self.nodes[new_id].error = (
-                    self.nodes[q_id].error + self.nodes[f_id].error
-                ) * 0.5
+            self._node_add()
 
         self.n_learning += 1
 
@@ -485,8 +518,6 @@ class GrowingNeuralGasDT:
         callback: Callable[[GrowingNeuralGasDT, int], None] | None = None,
     ) -> GrowingNeuralGasDT:
         """Train on data for multiple iterations.
-
-        Each iteration randomly samples one point from data.
 
         Args:
             data: Training data of shape (n_samples, 3) for positions.
@@ -507,39 +538,14 @@ class GrowingNeuralGasDT:
             if callback is not None:
                 callback(self, i)
 
-        # Final normal computation for all nodes
-        self._update_all_normals()
-
         return self
-
-    def _update_all_normals(self) -> None:
-        """Update normal vectors for all nodes using PCA."""
-        for node in self.nodes:
-            if node.id == -1:
-                continue
-            node.normal = self._compute_normal_pca(node.id)
-
-        # Update all normal edges
-        for node in self.nodes:
-            if node.id == -1:
-                continue
-            for neighbor_id in self.edges_per_node.get(node.id, set()):
-                self._update_property_edges(node.id, neighbor_id)
 
     def partial_fit(
         self,
         position: np.ndarray,
         color: np.ndarray | None = None,
     ) -> GrowingNeuralGasDT:
-        """Single online learning step.
-
-        Args:
-            position: Input position vector of shape (3,).
-            color: Optional color vector of shape (3,).
-
-        Returns:
-            self for chaining.
-        """
+        """Single online learning step."""
         self._one_train_update(position, color)
         return self
 
@@ -561,10 +567,10 @@ class GrowingNeuralGasDT:
     def n_edges_normal(self) -> int:
         """Number of normal edges."""
         count = 0
-        for i, node in enumerate(self.nodes):
-            if node.id == -1:
+        for i in range(len(self.nodes)):
+            if self.nodes[i].id == -1:
                 continue
-            for j in range(i + 1, self.params.max_nodes):
+            for j in range(i + 1, len(self.nodes)):
                 if self.nodes[j].id == -1:
                     continue
                 if self.edges_normal[i, j] > 0:
@@ -572,16 +578,7 @@ class GrowingNeuralGasDT:
         return count
 
     def get_graph(self) -> tuple[np.ndarray, list[tuple[int, int]]]:
-        """Get current graph structure (position topology only).
-
-        For compatibility with standard GNG visualization.
-
-        Returns:
-            Tuple of:
-                - nodes: Array of shape (n_active_nodes, 3) with positions.
-                - edges: List of (i, j) tuples indexing into nodes array.
-        """
-        # Get active nodes and create index mapping
+        """Get current graph structure (position topology only)."""
         active_nodes = []
         index_map = {}
 
@@ -590,13 +587,8 @@ class GrowingNeuralGasDT:
                 index_map[node.id] = len(active_nodes)
                 active_nodes.append(node.position.copy())
 
-        nodes = (
-            np.array(active_nodes)
-            if active_nodes
-            else np.array([]).reshape(0, 3)
-        )
+        nodes = np.array(active_nodes) if active_nodes else np.zeros((0, 3))
 
-        # Get position edges using new indices
         edges = []
         seen = set()
         for node_id, neighbors in self.edges_per_node.items():
@@ -623,13 +615,8 @@ class GrowingNeuralGasDT:
         """Get current graph structure with all topologies.
 
         Returns:
-            Tuple of:
-                - nodes: Array of shape (n_active_nodes, 3) with positions.
-                - pos_edges: Position-based edges (standard GNG edges).
-                - color_edges: Color-similarity edges.
-                - normal_edges: Normal-similarity edges.
+            Tuple of (nodes, pos_edges, color_edges, normal_edges).
         """
-        # Get active nodes and create index mapping
         active_nodes = []
         index_map = {}
 
@@ -638,13 +625,9 @@ class GrowingNeuralGasDT:
                 index_map[node.id] = len(active_nodes)
                 active_nodes.append(node.position.copy())
 
-        nodes = (
-            np.array(active_nodes)
-            if active_nodes
-            else np.array([]).reshape(0, 3)
-        )
+        nodes = np.array(active_nodes) if active_nodes else np.zeros((0, 3))
 
-        # Get position edges
+        # Position edges
         pos_edges = []
         seen = set()
         for node_id, neighbors in self.edges_per_node.items():
@@ -658,26 +641,24 @@ class GrowingNeuralGasDT:
                     seen.add(edge)
                     pos_edges.append((index_map[node_id], index_map[neighbor_id]))
 
-        # Get color edges
+        # Color edges
         color_edges = []
-        for i, node_i in enumerate(self.nodes):
-            if node_i.id == -1:
+        for i in range(len(self.nodes)):
+            if self.nodes[i].id == -1:
                 continue
-            for j in range(i + 1, self.params.max_nodes):
-                node_j = self.nodes[j]
-                if node_j.id == -1:
+            for j in range(i + 1, len(self.nodes)):
+                if self.nodes[j].id == -1:
                     continue
                 if self.edges_color[i, j] > 0:
                     color_edges.append((index_map[i], index_map[j]))
 
-        # Get normal edges
+        # Normal edges
         normal_edges = []
-        for i, node_i in enumerate(self.nodes):
-            if node_i.id == -1:
+        for i in range(len(self.nodes)):
+            if self.nodes[i].id == -1:
                 continue
-            for j in range(i + 1, self.params.max_nodes):
-                node_j = self.nodes[j]
-                if node_j.id == -1:
+            for j in range(i + 1, len(self.nodes)):
+                if self.nodes[j].id == -1:
                     continue
                 if self.edges_normal[i, j] > 0:
                     normal_edges.append((index_map[i], index_map[j]))
@@ -685,27 +666,15 @@ class GrowingNeuralGasDT:
         return nodes, pos_edges, color_edges, normal_edges
 
     def get_node_normals(self) -> np.ndarray:
-        """Get normal vectors for active nodes.
-
-        Returns:
-            Array of normal vectors in same order as get_graph() nodes.
-        """
+        """Get normal vectors for active nodes."""
         return np.array([node.normal for node in self.nodes if node.id != -1])
 
     def get_node_colors(self) -> np.ndarray:
-        """Get color vectors for active nodes.
-
-        Returns:
-            Array of color vectors in same order as get_graph() nodes.
-        """
+        """Get color vectors for active nodes."""
         return np.array([node.color for node in self.nodes if node.id != -1])
 
     def get_node_errors(self) -> np.ndarray:
-        """Get error values for active nodes.
-
-        Returns:
-            Array of error values in same order as get_graph() nodes.
-        """
+        """Get error values for active nodes."""
         return np.array([node.error for node in self.nodes if node.id != -1])
 
 

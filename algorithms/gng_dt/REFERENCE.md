@@ -8,7 +8,78 @@ GNG-DT は、複数の異なるトポロジー（エッジ構造）を同時に�
 ## 出典
 
 - Toda, Y., et al. (2022). "Learning of Point Cloud Data by Growing Neural Gas with Different Topologies"
-- 参照実装: references/original_code/toda_gngdt/
+- 参照実装: references/original_code/toda_gngdt/gng_livox/src/gng.c
+
+## オリジナルコードの構造
+
+### ノード配列 (node[i][j])
+```c
+node[i][0-2]: 位置 (x, y, z)
+node[i][3]:   色（LDIMまで）
+node[i][4-6]: 法線ベクトル (nx, ny, nz)
+node[i][7]:   PCAの残差 r
+```
+
+### エッジ配列
+```c
+edge[i][j]:   位置ベースエッジ（年齢管理付き）
+cedge[i][j]:  色ベースエッジ
+nedge[i][j]:  法線ベースエッジ
+pedge[i][j]:  走行可能判定エッジ
+age[i][j]:    エッジ年齢
+```
+
+## アルゴリズムの詳細
+
+### 1. 勝者選択（位置のみ使用）
+```c
+// gng.c:914-937
+for (j = 0; j < 3; j++)  // 位置の3次元のみ
+    dis[i] += (net->node[i][j] - v[t][j]) * (net->node[i][j] - v[t][j]);
+```
+
+### 2. 色エッジの更新（s1-s2間）
+```c
+// gng.c:618-630
+dis = 0.0;
+for (i = 3; i < LDIM; i++) {
+    dis += (net->node[s1][i] - net->node[s2][i]) * ...;
+}
+if (dis < net->cthv * net->cthv) {
+    net->cedge[s1][s2] = 1;  // 色が近い場合に接続
+}
+```
+
+### 3. 法線の内積計算（PCA更新前）
+```c
+// gng.c:632-635
+dis = 0.0;
+for (i = 4; i < 7; i++) {
+    dis += net->node[s1][i] * net->node[s2][i];  // 法線の内積
+}
+```
+
+### 4. PCAによる法線更新（毎回実行）
+```c
+// gng.c:712-728
+if (ect > 1) {
+    r = pca(s_ele, cog, ect, ev1);  // s1と近傍位置からPCA
+    // 法線を正規化してnode[4-6]に格納
+    for (j = 0; j < 3; j++) {
+        net->node[s1][j + 4] = ev1[j] * dis1;
+    }
+}
+```
+
+### 5. 法線エッジの更新（s1-s2間のみ）
+```c
+// gng.c:741-748
+// PCA更新「前」の内積を使用
+if (fabs(dis) > net->nthv) {
+    net->nedge[s1][s2] = 1;  // |内積| > 0.998 で接続
+    net->nedge[s2][s1] = 1;
+}
+```
 
 ## 標準GNGとの違い
 
@@ -17,26 +88,10 @@ GNG-DT は、複数の異なるトポロジー（エッジ構造）を同時に�
 | エッジ構造 | 単一 | 複数（位置、色、法線） |
 | 勝者選択 | 全属性を使用 | 位置のみを使用 |
 | エッジ接続 | 勝者間で常に接続 | 属性ごとに閾値判定 |
-| 法線計算 | なし | PCAによる自動計算 |
+| 法線計算 | なし | PCAによる**毎回**更新 |
+| nedge更新 | - | **s1-s2間のみ** |
 
-## アルゴリズム
-
-### キーコンセプト
-
-1. **位置ベースの勝者選択**:
-   - 距離計算には位置情報のみを使用
-   - `s1 = argmin_i ||v^pos - h^pos_i||`
-
-2. **属性ごとの独立したエッジ**:
-   - 位置エッジ: 標準GNGと同様（年齢管理）
-   - 色エッジ: 色差 < τ^col で接続
-   - 法線エッジ: 法線内積 > τ^nor で接続
-
-3. **PCA法線計算**:
-   - 近傍ノードの位置から共分散行列を計算
-   - 最小固有値に対応する固有ベクトル = 法線
-
-### パラメータ
+## パラメータ
 
 ```python
 @dataclass
@@ -46,7 +101,7 @@ class GNGDTParams:
     eps_b: float = 0.05       # 勝者学習率（オリジナル: e1 = 0.05）
     eps_n: float = 0.0005     # 近傍学習率（オリジナル: e2 = 0.0005）
     alpha: float = 0.5        # 分割時誤差減衰
-    beta: float = 0.005       # 全体誤差減衰
+    beta: float = 0.0005      # 全体誤差減衰（オリジナル: dise = 0.0005）
     max_age: int = 88         # 最大エッジ年齢（オリジナル: MAX_AGE = 88）
     tau_color: float = 0.05   # 色閾値（オリジナル: cthv = 0.05）
     tau_normal: float = 0.998 # 法線閾値（|内積| > 0.998、オリジナル: nthv = 0.998）

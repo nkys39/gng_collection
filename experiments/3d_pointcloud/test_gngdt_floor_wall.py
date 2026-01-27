@@ -171,10 +171,9 @@ def run_experiment(
         eps_b=0.05,  # Winner learning rate (original: 0.05)
         eps_n=0.0005,  # Neighbor learning rate (original: 0.0005)
         alpha=0.5,  # Error decay on split
-        beta=0.005,  # Global error decay
+        beta=0.0005,  # Global error decay (original: dise = 0.0005)
         max_age=88,  # Maximum edge age (original: 88)
         tau_normal=0.95,  # Normal similarity threshold (|dot| > 0.95, ≈ cos(18°))
-        pca_min_neighbors=3,  # Minimum neighbors for PCA
     )
     gng = GrowingNeuralGasDT(params=params, seed=seed)
 
