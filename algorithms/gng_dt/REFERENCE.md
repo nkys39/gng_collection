@@ -117,17 +117,21 @@ lambda_回の学習後、平均誤差が閾値（THV）を超えた場合のみ�
 
 ### 3. Utility削除（node_add_gng内）
 ```c
-// gng.c:461-463, 544-549
-if(net->gng_u[i]*1000000.0 < 100.0){  // u < 0.0001
-    delete_list[delete_num++] = i;
+// gng.c:450, 461-463, 544-549
+for (i = 1; i < net->node_n; i++) {  // i=1から開始（node[0]は除外）
+    if(net->gng_u[i]*1000000.0 < 100.0){  // u < 0.0001
+        delete_list[delete_num++] = i;
+    }
 }
 if (net->node_n > 10 && min_err < THV){
     for(int i=0;i<delete_num;i++){
+        if(delete_list[i] > net->node_n-2) break;  // インデックス有効性チェック
         node_delete(net, delete_list[i]);
     }
 }
 ```
 ノード追加時、低Utility（< 0.0001）のノードを削除。
+**注意**: ループがi=1から開始するため、node[0]はdelete_listに追加されない。
 
 ### 4. ramda/2でのdelete_node_gngu
 ```c

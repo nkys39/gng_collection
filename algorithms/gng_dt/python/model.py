@@ -534,6 +534,10 @@ class GrowingNeuralGasDT:
 
         Original gng.c:432-550.
         Also includes utility-based deletion of low-utility nodes.
+
+        Note: Original loop starts from i=1 (gng.c:450), so node[0] is
+        never added to delete_list. We replicate this by excluding
+        the first found node from delete_list.
         """
         p = self.params
 
@@ -542,16 +546,22 @@ class GrowingNeuralGasDT:
 
         # Find node q with maximum error, minimum utility, and minimum error
         # Also build delete list (original gng.c:445-468)
+        # Original: initializes from node[0], then loops from i=1
         max_err = -1.0
         q = -1
         min_u = float("inf")
         min_u_id = -1
         min_err = float("inf")
         delete_list = []
+        first_node_id = -1  # Track first node to exclude from delete_list
 
         for node in self.nodes:
             if node.id == -1:
                 continue
+
+            # Track the first active node (equivalent to original node[0])
+            if first_node_id == -1:
+                first_node_id = node.id
 
             if node.error > max_err:
                 max_err = node.error
@@ -565,7 +575,8 @@ class GrowingNeuralGasDT:
                 min_err = node.error
 
             # Original: if(net->gng_u[i]*1000000.0 < 100.0) -> u < 0.0001
-            if node.utility < 0.0001:
+            # Original loop starts at i=1, so first node is never added
+            if node.utility < 0.0001 and node.id != first_node_id:
                 delete_list.append(node.id)
 
         if q == -1:
@@ -635,6 +646,10 @@ class GrowingNeuralGasDT:
 
         # Utility-based deletion (original gng.c:544-549)
         # Delete low-utility nodes if network is large and error is small
+        # Original: if(delete_list[i] > net->node_n-2) break;
+        # This prevents deleting nodes whose indices became invalid after compaction.
+        # In Python, we track by ID (not contiguous index), so we just check if
+        # the node still exists. Cascading deletion may have already removed it.
         if self.n_nodes > 10 and min_err < p.thv:
             for del_id in delete_list:
                 if self.nodes[del_id].id != -1 and del_id != r:
