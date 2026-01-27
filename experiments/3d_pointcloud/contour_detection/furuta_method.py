@@ -8,6 +8,20 @@ Algorithm:
     Combines binary image contour detection with GNG angle-based traversal.
     - Outer contour: Start from Y_min node, CCW traversal
     - Inner contour: Find nodes with angle gap >= threshold, then CCW traversal
+
+Paper correspondence:
+    - Direction update: V_new = (V_old - 225) mod 360 where V_old = angle to found neighbor
+    - CCW nearest: Select neighbor with smallest (angle - direction) % 360
+    - Outer start: Y_min node, direction 180°
+    - Inner threshold: θ_thv = 135°
+
+Implementation extensions (not in paper):
+    The paper identifies stability issues but provides no countermeasures.
+    This implementation adds:
+    - Start node requires 2+ neighbors (CCW traversal needs choices)
+    - Exclude previous node from search (prevent immediate backtrack)
+    - Minimum contour length check (prevent premature completion)
+    - Sub-loop detection (force termination on revisit)
 """
 
 from dataclasses import dataclass, field
