@@ -40,6 +40,7 @@ class FurutaContourParams:
 
     angle_threshold: float = 135.0  # Inner contour detection threshold (degrees)
     max_iterations: int = 1000  # Max iterations for CCW traversal (safety)
+    debug: bool = False  # Enable debug output
 
 
 class FurutaContourDetector:
@@ -150,10 +151,23 @@ class FurutaContourDetector:
         if len(trav_indices) < 3:
             return []
 
-        # Step 1: Sort by Y coordinate to find Y_min
+        # Step 1: Find a good starting node
+        # Original paper uses Y_min, but we need a node with at least 2 neighbors
+        # to enable CCW traversal
         y_coords = nodes[trav_indices, 1]
         sorted_order = np.argsort(y_coords)
-        start_node = int(trav_indices[sorted_order[0]])
+
+        # Find the first node (by Y_min) that has at least 2 neighbors
+        start_node = None
+        for idx in sorted_order:
+            candidate = int(trav_indices[idx])
+            if candidate in trav_pedge and len(trav_pedge[candidate]) >= 2:
+                start_node = candidate
+                break
+
+        # Fallback to Y_min if no good candidate found
+        if start_node is None:
+            start_node = int(trav_indices[sorted_order[0]])
 
         # Check if start node has neighbors
         if start_node not in trav_pedge or len(trav_pedge[start_node]) == 0:
@@ -164,31 +178,53 @@ class FurutaContourDetector:
         current = start_node
         direction = 180.0  # Start searching from 180 degrees (left)
 
+        if self.params.debug:
+            print(f"  Start node: {start_node} at Y={nodes[start_node, 1]:.3f}")
+            print(f"  Neighbors: {trav_pedge.get(start_node, [])}")
+
         # Step 3-5: CCW traversal
         visited_in_traversal = {start_node}
+        termination_reason = "max_iterations"
+        prev_node = None  # Track previous node to avoid going back
+
+        min_contour_length = 3  # Minimum nodes before allowing return to start
 
         for iteration in range(self.params.max_iterations):
+            # Only allow returning to start after visiting minimum nodes
+            allow_start = start_node if len(contour) >= min_contour_length else None
+
             next_node, new_direction = self._find_next_ccw(
-                current, direction, nodes, trav_pedge
+                current, direction, nodes, trav_pedge,
+                exclude_node=prev_node, allow_node=allow_start
             )
+
+            if self.params.debug and iteration < 10:
+                print(f"  Iter {iteration}: current={current}, dir={direction:.1f}° -> next={next_node}, new_dir={new_direction:.1f}° (allow_start={allow_start is not None})")
 
             if next_node is None:
                 # No neighbor found - dead end
+                termination_reason = "dead_end"
                 break
 
-            if next_node == start_node:
+            if next_node == start_node and len(contour) >= min_contour_length:
                 # Completed the loop successfully
+                termination_reason = "completed"
                 break
 
             if next_node in visited_in_traversal:
                 # Stuck in a sub-loop (not returning to start)
                 # This is a stability issue - break to avoid infinite loop
+                termination_reason = f"sub_loop_at_{next_node}"
                 break
 
             visited_in_traversal.add(next_node)
             contour.append(next_node)
+            prev_node = current
             current = next_node
             direction = new_direction
+
+        if self.params.debug:
+            print(f"  Termination: {termination_reason}, contour length: {len(contour)}")
 
         return contour
 
@@ -198,6 +234,8 @@ class FurutaContourDetector:
         direction: float,
         nodes: np.ndarray,
         trav_pedge: dict[int, list[int]],
+        exclude_node: int | None = None,
+        allow_node: int | None = None,
     ) -> tuple[int | None, float]:
         """Find next node in counter-clockwise direction.
 
@@ -206,6 +244,8 @@ class FurutaContourDetector:
             direction: Current search direction (degrees)
             nodes: Node positions
             trav_pedge: Traversable pedge adjacency
+            exclude_node: Node to exclude from search (typically previous node)
+            allow_node: Node that is always allowed (typically start node)
 
         Returns:
             (next_node_id, new_direction) or (None, 0) if no neighbor found
@@ -213,7 +253,11 @@ class FurutaContourDetector:
         if current not in trav_pedge:
             return None, 0.0
 
-        neighbors = trav_pedge[current]
+        # Filter neighbors: exclude previous node but always allow start node
+        neighbors = [
+            n for n in trav_pedge[current]
+            if n != exclude_node or n == allow_node
+        ]
         if len(neighbors) == 0:
             return None, 0.0
 
@@ -233,6 +277,7 @@ class FurutaContourDetector:
         # Find the neighbor with smallest CCW angle from direction
         best_node = None
         best_ccw_angle = float("inf")
+        best_angle = 0.0  # Angle to the best neighbor
 
         for neighbor, angle in angle_list:
             # Calculate CCW angle from direction
@@ -240,13 +285,16 @@ class FurutaContourDetector:
             if ccw_angle < best_ccw_angle:
                 best_ccw_angle = ccw_angle
                 best_node = neighbor
+                best_angle = angle
 
         if best_node is None:
             return None, 0.0
 
         # Update direction: V_new = (V_old - 225) mod 360
-        # This is equivalent to looking back and slightly CCW from where we came
-        new_direction = (direction - 225.0) % 360.0
+        # V_old is the angle TO the found neighbor (not the search direction)
+        # This means: look back from where we came (angle + 180) then go 45° CCW (- 45°)
+        # = angle + 180 - 45 = angle + 135 = angle - 225 (mod 360)
+        new_direction = (best_angle - 225.0) % 360.0
 
         return best_node, new_direction
 
