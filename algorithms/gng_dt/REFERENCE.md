@@ -304,3 +304,97 @@ normals = gng.get_node_normals()
 - **オリジナル**: 1次元（node[3]、LDIM=4）
 - **Python**: 3次元（RGB）
 - **影響**: より一般的な用途に対応可能
+
+## ロボット版 (model_robot.py)
+
+`model_robot.py`はオリジナルコードのロボット固有機能を実装した拡張版です。
+
+### ロボット固有パラメータ
+
+```python
+@dataclass
+class GNGDTRobotParams:
+    # ... 基本パラメータ ...
+    max_angle: float = 20.0   # 走行可能最大角度（MAXANGLE = 20度）
+    s1thv: float = 1.0        # 次元特性閾値（固有値 < s1thv で平面）
+    contour_gap_threshold: float = 135.0  # 輪郭検出角度ギャップ閾値
+```
+
+### ロボット固有プロパティ
+
+| プロパティ | オリジナル | 説明 |
+|-----------|-----------|------|
+| `through_property` | gng.c:759-766 | 表面が水平（|normal_z| > cos(max_angle)）なら1 |
+| `dimension_property` | gng.c:752-757 | 表面が平面（eigenvalue < s1thv）なら1 |
+| `traversability_property` | gng.c:818-828 | 走行可能なら1（dimension=1 かつ through=1） |
+| `contour` | gng.c:794-799 | 走行可能領域の輪郭上なら1 |
+| `degree` | gng.c:801-809 | 傾斜コスト（経路計画用） |
+| `curvature` | gng.c:811-816 | 曲率コスト（PCA残差ベース） |
+
+### 走行可能エッジ (pedge)
+
+```c
+// gng.c:830-841
+if (net->traversability_property[s1] == net->traversability_property[i]) {
+    net->pedge[s1][i] = 1;  // 同じ走行可能性を持つノードを接続
+}
+```
+
+位置エッジ(`edge`)の近傍のうち、同じ`traversability_property`を持つノード間のみを接続。
+
+### 輪郭検出 (judge_contour)
+
+```c
+// gng.c:39-67
+// pedge近傍への角度を計算し、135度以上のギャップがあれば輪郭
+for (i = 0; i < vct; i++) {
+    ta = atan2(vy[i] - sy, vx[i] - sx);
+    ang[i] = (ta / M_PI) * 180.0;
+}
+bubble_sort_ang(ang, vct);
+// 連続する角度間のギャップを確認
+if (gap >= 135.0) return 1;  // 輪郭上
+```
+
+### 使用例
+
+```python
+from algorithms.gng_dt.python.model_robot import GrowingNeuralGasDTRobot, GNGDTRobotParams
+
+# パラメータ設定
+params = GNGDTRobotParams(
+    max_nodes=150,
+    max_angle=20.0,  # 20度以内が走行可能
+)
+
+# 3D点群データ（Z軸が上）
+points = np.random.rand(2000, 3)
+
+# 学習
+gng = GrowingNeuralGasDTRobot(params=params)
+gng.train(points, n_iterations=8000)
+
+# 走行可能ノードの取得
+traversable_nodes = gng.get_traversable_nodes()
+
+# 輪郭ノードの取得
+contour_nodes = gng.get_contour_nodes()
+
+# 全トポロジーの取得
+nodes, pos_edges, color_edges, normal_edges, trav_edges = gng.get_multi_graph()
+```
+
+### 応用例
+
+1. **自律移動ロボットの経路計画**:
+   - `traversability_property`で走行可能領域を特定
+   - `degree`と`curvature`で経路コストを計算
+   - `contour`で安全マージンを設定
+
+2. **環境マッピング**:
+   - 床面（水平面）と壁面（垂直面）の自動分類
+   - 走行可能領域のリアルタイム更新
+
+3. **障害物回避**:
+   - 非走行可能ノードを障害物として認識
+   - 輪郭ノードを境界として使用
