@@ -162,16 +162,18 @@ def run_experiment(
     points = sample_floor_and_wall(n_samples=n_samples, seed=seed)
     print(f"Sampled {len(points)} points")
 
-    # Setup GNG-DT with parameters tuned for 3D and normal detection
+    # Setup GNG-DT with parameters based on original code
+    # Original uses: e1=0.05, e2=0.0005, ramda=200, MAX_AGE=88, nthv=0.998
+    # We use slightly relaxed parameters for faster convergence in this test
     params = GNGDTParams(
         max_nodes=150,  # More nodes for 3D surfaces
-        lambda_=100,  # Node insertion interval
-        eps_b=0.1,  # Winner learning rate
-        eps_n=0.01,  # Neighbor learning rate
+        lambda_=100,  # Node insertion interval (faster than original's 200)
+        eps_b=0.05,  # Winner learning rate (original: 0.05)
+        eps_n=0.0005,  # Neighbor learning rate (original: 0.0005)
         alpha=0.5,  # Error decay on split
         beta=0.005,  # Global error decay
-        max_age=100,  # Maximum edge age
-        tau_normal=0.90,  # Normal similarity threshold (cos(25°) ≈ 0.90)
+        max_age=88,  # Maximum edge age (original: 88)
+        tau_normal=0.95,  # Normal similarity threshold (|dot| > 0.95, ≈ cos(18°))
         pca_min_neighbors=3,  # Minimum neighbors for PCA
     )
     gng = GrowingNeuralGasDT(params=params, seed=seed)

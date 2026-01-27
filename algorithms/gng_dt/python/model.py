@@ -45,15 +45,15 @@ class GNGDTParams:
     """
 
     max_nodes: int = 100
-    lambda_: int = 100
-    eps_b: float = 0.08
-    eps_n: float = 0.008
+    lambda_: int = 200  # Original: ramda = 200
+    eps_b: float = 0.05  # Original: e1 = 0.05
+    eps_n: float = 0.0005  # Original: e2 = 0.0005
     alpha: float = 0.5
     beta: float = 0.005
-    max_age: int = 100
+    max_age: int = 88  # Original: MAX_AGE = 88
     # GNG-DT specific parameters
-    tau_color: float = 10.0  # Color threshold (Euclidean distance)
-    tau_normal: float = 0.98  # Normal similarity (dot product > 0.98 ≈ cos(11°))
+    tau_color: float = 0.05  # Original: cthv = 0.05 (Euclidean distance)
+    tau_normal: float = 0.998  # Original: nthv = 0.998 (|dot product| > 0.998)
     pca_min_neighbors: int = 3  # Minimum neighbors for PCA
 
 
@@ -252,8 +252,9 @@ class GrowingNeuralGasDT:
             self.edges_color[node1, node2] = 0
             self.edges_color[node2, node1] = 0
 
-        # Normal edge: connected if normal dot product > tau_normal
-        dot_product = np.dot(n1.normal, n2.normal)
+        # Normal edge: connected if |dot product| > tau_normal
+        # Original uses fabs() to handle normals pointing in opposite directions
+        dot_product = np.abs(np.dot(n1.normal, n2.normal))
         if dot_product > p.tau_normal:
             self.edges_normal[node1, node2] = 1
             self.edges_normal[node2, node1] = 1
