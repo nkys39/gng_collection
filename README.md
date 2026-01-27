@@ -15,7 +15,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | **AiS-GNG** | GNG-U2 + Add-if-Silentルール、高密度位相構造の高速生成 |
 | **GNG-T** | GNG + ヒューリスティック三角形分割（四角形探索・交差点探索） |
 | **GNG-D** | GNG + 明示的Delaunay三角形分割（scipy.spatial.Delaunay） |
-| **GNG-DT** | GNG + 複数トポロジー学習（位置、色、法線で独立したエッジ構造） |
+| **GNG-DT** | GNG + 複数トポロジー学習（位置、色、法線で独立したエッジ構造）。ロボット版も提供 |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
 
@@ -272,7 +272,7 @@ gng_collection/
 | AiS-GNG     | ✓      | ✓   | Add-if-Silent GNG - 高密度位相構造の高速生成 |
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
-| GNG-DT      | ✓      | -   | GNG with Different Topologies - 複数トポロジー学習（3D点群用） |
+| GNG-DT      | ✓      | -   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版あり） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
@@ -420,7 +420,7 @@ from algorithms.gng_dt.python.model import GrowingNeuralGasDT, GNGDTParams
 params = GNGDTParams(
     max_nodes=150,
     tau_normal=0.90,   # 法線類似度閾値（内積 > 0.90 で接続）
-    tau_color=10.0,    # 色類似度閾値（ユークリッド距離）
+    tau_color=0.05,    # 色類似度閾値
 )
 gng_dt = GrowingNeuralGasDT(params=params)
 gng_dt.train(points_3d, n_iterations=8000)  # 3D点群
@@ -431,6 +431,43 @@ nodes, pos_edges, color_edges, normal_edges = gng_dt.get_multi_graph()
 # 法線ベクトルの取得（PCAで自動計算）
 normals = gng_dt.get_node_normals()
 ```
+
+### GNG-DT Robot（走行可能性解析）
+
+ロボット向け拡張版。走行可能領域の自動検出、輪郭抽出、傾斜コスト計算機能を追加。
+
+```python
+from algorithms.gng_dt.python.model_robot import GrowingNeuralGasDTRobot, GNGDTRobotParams
+
+params = GNGDTRobotParams(
+    max_nodes=150,
+    max_angle=20.0,    # 走行可能最大傾斜角度（度）
+    tau_normal=0.998,  # 法線類似度閾値
+)
+gng = GrowingNeuralGasDTRobot(params=params)
+gng.train(points_3d, n_iterations=8000)
+
+# 走行可能ノードの取得（水平で平面的な領域）
+traversable_nodes = gng.get_traversable_nodes()
+
+# 走行可能領域の輪郭ノード
+contour_nodes = gng.get_contour_nodes()
+
+# 傾斜コスト（経路計画用）
+degree = gng.get_degree()
+
+# 全トポロジーの取得（位置、色、法線、走行可能性）
+nodes, pos_edges, color_edges, normal_edges, trav_edges = gng.get_multi_graph()
+```
+
+**ロボット版の主な機能：**
+| 機能 | 説明 |
+|------|------|
+| `traversability_property` | 水平かつ平面的な領域を走行可能と判定 |
+| `pedge` | 同じ走行可能性を持つノード間のエッジ |
+| `contour` | 走行可能領域の境界検出 |
+| `degree` | 傾斜コスト（経路計画用） |
+| `curvature` | 曲率コスト（PCA残差ベース） |
 
 ### SOM
 
