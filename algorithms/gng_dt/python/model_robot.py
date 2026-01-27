@@ -463,8 +463,12 @@ class GrowingNeuralGasDTRobot:
                 if self.nodes[i].contour == 0:
                     cct_s1 += 1
 
-        n1.contour = self._judge_contour(s1)
-        if cct_s1 == ct_s1 and n1.through_property == 0:
+        # Contour only applies to traversable nodes (boundary of traversable region)
+        if n1.traversability_property == 1:
+            n1.contour = self._judge_contour(s1)
+            if cct_s1 == ct_s1 and n1.through_property == 0:
+                n1.contour = 0
+        else:
             n1.contour = 0
 
         # Update s2 contour as well
@@ -477,8 +481,12 @@ class GrowingNeuralGasDTRobot:
                 if self.nodes[i].contour == 0:
                     cct_s2 += 1
 
-        n2.contour = self._judge_contour(s2)
-        if cct_s2 == ct_s2 and n2.through_property == 0:
+        # Contour only applies to traversable nodes
+        if n2.traversability_property == 1:
+            n2.contour = self._judge_contour(s2)
+            if cct_s2 == ct_s2 and n2.through_property == 0:
+                n2.contour = 0
+        else:
             n2.contour = 0
 
     def _find_two_nearest(self, position: np.ndarray) -> tuple[int, int, float, float]:
