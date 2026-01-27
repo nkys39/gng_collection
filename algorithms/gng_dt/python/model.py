@@ -191,14 +191,31 @@ class GrowingNeuralGasDT:
         return node_id
 
     def _remove_node(self, node_id: int) -> None:
-        """Remove a node (like original node_delete)."""
+        """Remove a node (like original node_delete).
+
+        Original gng.c:333-430 implements cascading deletion:
+        When a node is deleted, if any neighbor becomes isolated
+        (edge_ct == 0), that neighbor is also deleted recursively.
+        """
+        # Track neighbors that may become isolated after deletion
+        neighbors_to_check = list(self.edges_per_node.get(node_id, set()))
+
         # Clear all edges involving this node
-        for other_id in list(self.edges_per_node.get(node_id, set())):
+        for other_id in neighbors_to_check:
             self._remove_all_edges(node_id, other_id)
 
         self.edges_per_node.pop(node_id, None)
         self.nodes[node_id].id = -1
         self._addable_indices.append(node_id)
+
+        # Cascading deletion: delete neighbors that became isolated
+        # (original gng.c:379-386, 427-429)
+        for neighbor_id in neighbors_to_check:
+            if (
+                self.nodes[neighbor_id].id != -1
+                and not self.edges_per_node.get(neighbor_id)
+            ):
+                self._remove_node(neighbor_id)
 
     def _add_position_edge(self, n1: int, n2: int) -> None:
         """Add position edge between two nodes."""
@@ -536,12 +553,21 @@ class GrowingNeuralGasDT:
             return
 
         # Add new node r between q and f (original gng.c:483-485)
+        # Original averages ALL dimensions: for (i = 0; i < DIM; i++) node[r][i] = 0.5*(q[i]+f[i])
         new_pos = 0.5 * (self.nodes[q].position + self.nodes[f].position)
         new_color = 0.5 * (self.nodes[q].color + self.nodes[f].color)
         r = self._add_node(new_pos, new_color)
 
         if r == -1:
             return
+
+        # Initialize normal as average of q and f's normals (original gng.c:484-485 includes dim 4-6)
+        new_normal = 0.5 * (self.nodes[q].normal + self.nodes[f].normal)
+        norm = np.linalg.norm(new_normal)
+        if norm > 1e-10:
+            self.nodes[r].normal = new_normal / norm
+        else:
+            self.nodes[r].normal = np.array([0.0, 0.0, 1.0])
 
         # Update edges (original gng.c:487-528)
         # Remove edge between q and f
