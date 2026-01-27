@@ -164,6 +164,36 @@ for (i = 0; i < DIM; i++)
 ```
 新ノードの全属性（位置、色、法線）をq,fの平均で初期化。
 
+### 7. PCA位置収集タイミング
+```c
+// gng.c:637-641: s1の更新前位置を収集
+for (int c = 0; c < 3; c++) {
+    cog[c] = net->node[s1][c];
+    s_ele[ect][c] = net->node[s1][c];
+}
+
+// gng.c:650-652: s1を更新
+net->node[s1][i] += e1 * (v[i] - net->node[s1][i]);
+
+// gng.c:657-658, 663-666: 近傍を更新後、その位置を収集
+net->node[i][j] += e2 * (v[j] - net->node[i][j]);
+s_ele[ect][c] = net->node[i][c];  // 更新後の位置
+```
+PCAはs1の**更新前**位置 + 近傍の**更新後**位置で計算。
+
+### 8. cedge常時更新
+```c
+// gng.c:618-630: 常に実行（条件なし）
+double dis = 0.0;
+for (i = 3; i < LDIM; i++) {
+    dis += (net->node[s1][i] - net->node[s2][i]) * ...;
+}
+if (dis < net->cthv * net->cthv) {
+    net->cedge[s1][s2] = 1;
+}
+```
+cedgeはノードの保存された色属性に基づき常に更新。
+
 ## パラメータ
 
 ```python
