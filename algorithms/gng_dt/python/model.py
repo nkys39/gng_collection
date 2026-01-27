@@ -307,11 +307,8 @@ class GrowingNeuralGasDT:
     def _compute_normal_pca(self, node_id: int) -> np.ndarray:
         """Compute normal vector using PCA on node + neighbor positions.
 
-        Follows original gng.c:712-728:
-            - Collect s1's position and all position-edge neighbors
-            - Compute PCA
-            - Normal = eigenvector of smallest eigenvalue
-            - Normalize to unit length
+        NOTE: This method is kept for compatibility but _compute_normal_from_positions
+        should be used in _gng_learn to match original timing.
 
         Args:
             node_id: Node ID (s1 in original).
@@ -321,36 +318,57 @@ class GrowingNeuralGasDT:
         """
         # Collect positions: s1 + all neighbors with position edge
         positions = [self.nodes[node_id].position.copy()]
+        cog = self.nodes[node_id].position.copy()
         for neighbor_id in self.edges_per_node.get(node_id, set()):
             if self.nodes[neighbor_id].id != -1:
                 positions.append(self.nodes[neighbor_id].position.copy())
+                cog += self.nodes[neighbor_id].position
 
+        return self._compute_normal_from_positions(positions, cog)
+
+    def _compute_normal_from_positions(
+        self, positions: list[np.ndarray], cog_sum: np.ndarray
+    ) -> np.ndarray:
+        """Compute normal vector from pre-collected positions.
+
+        Follows original gng.c:712-728:
+            - Compute PCA on collected positions
+            - Normal = eigenvector of smallest eigenvalue
+            - Normalize to unit length
+
+        Args:
+            positions: List of position vectors (s1 original + neighbors updated).
+            cog_sum: Sum of all positions (for computing centroid).
+
+        Returns:
+            Unit normal vector.
+        """
         ect = len(positions)
         if ect < 2:
-            # Not enough points for PCA, return default
+            # Not enough points for PCA, return default (original gng.c:730-735)
             return np.array([0.0, 0.0, 1.0])
 
-        positions = np.array(positions)
+        positions_arr = np.array(positions)
 
-        # Compute centroid (cog in original)
-        cog = np.mean(positions, axis=0)
+        # Compute centroid (cog in original, gng.c:713-714)
+        cog = cog_sum / ect
 
         # Compute covariance matrix
-        centered = positions - cog
+        centered = positions_arr - cog
         cov = np.dot(centered.T, centered) / ect
 
-        # Eigenvalue decomposition
+        # Eigenvalue decomposition (original uses pca() function)
         try:
             eigenvalues, eigenvectors = np.linalg.eigh(cov)
             # Smallest eigenvalue corresponds to normal direction
             normal = eigenvectors[:, 0].copy()
 
-            # Original: if (ev1[1] < 0) multiply by -1
+            # Original: if (ev1[1] < 0) multiply by -1 (gng.c:718-721)
             # This ensures consistent orientation (y-component positive)
             if normal[1] < 0:
                 normal = -normal
 
-            # Normalize (original uses invSqrt)
+            # Normalize (original uses invSqrt, gng.c:723-726)
             norm = np.linalg.norm(normal)
             if norm > 1e-10:
                 normal = normal / norm
@@ -420,17 +438,20 @@ class GrowingNeuralGasDT:
         self._add_position_edge(s1, s2)
 
         # Calculate color distance and update cedge (original gng.c:618-630)
-        if v_color is not None:
-            color_dist_sq = np.sum((n1.color - n2.color) ** 2)
-            if color_dist_sq < p.tau_color * p.tau_color:
-                self.edges_color[s1, s2] = 1
-                self.edges_color[s2, s1] = 1
-            else:
-                self.edges_color[s1, s2] = 0
-                self.edges_color[s2, s1] = 0
+        # Original ALWAYS updates cedge based on node's stored color values
+        color_dist_sq = np.sum((n1.color - n2.color) ** 2)
+        if color_dist_sq < p.tau_color * p.tau_color:
+            self.edges_color[s1, s2] = 1
+            self.edges_color[s2, s1] = 1
+        else:
+            self.edges_color[s1, s2] = 0
+            self.edges_color[s2, s1] = 0
 
         # Calculate normal dot product BEFORE updating normal (original gng.c:632-635)
         normal_dot = np.dot(n1.normal, n2.normal)
+
+        # Collect s1's ORIGINAL position for PCA BEFORE update (original gng.c:637-641)
+        s1_original_pos = n1.position.copy()
 
         # Reset edge age between s1 and s2 (original gng.c:645-646)
         self.edge_age[s1, s2] = 0
@@ -444,7 +465,11 @@ class GrowingNeuralGasDT:
             n1.color += e1 * (v_color - n1.color)
 
         # Update neighbors and handle edge aging (original gng.c:655-695)
+        # Also collect UPDATED neighbor positions for PCA (original gng.c:663-666)
         neighbors_to_remove = []
+        pca_positions = [s1_original_pos]  # Start with s1's ORIGINAL position
+        pca_cog = s1_original_pos.copy()
+
         for neighbor_id in list(self.edges_per_node[s1]):
             if neighbor_id == s1:
                 continue
@@ -457,6 +482,10 @@ class GrowingNeuralGasDT:
             # Increment edge age (original gng.c:660-661)
             self.edge_age[s1, neighbor_id] += 1
             self.edge_age[neighbor_id, s1] += 1
+
+            # Collect UPDATED neighbor position for PCA (original gng.c:663-666)
+            pca_positions.append(neighbor.position.copy())
+            pca_cog += neighbor.position
 
             # Check age threshold (original gng.c:673-694)
             if self.edge_age[s1, neighbor_id] > p.max_age:
@@ -474,8 +503,9 @@ class GrowingNeuralGasDT:
                 if self.nodes[i].id != -1 and self.edges_color[s1, i] == 1 and i != s1:
                     self.nodes[i].color += e2 * (v_color - self.nodes[i].color)
 
-        # Compute normal via PCA (original gng.c:712-728)
-        n1.normal = self._compute_normal_pca(s1)
+        # Compute normal via PCA using collected positions (original gng.c:712-728)
+        # Uses s1's ORIGINAL position + neighbors' UPDATED positions
+        n1.normal = self._compute_normal_from_positions(pca_positions, pca_cog)
 
         # Update nedge between s1 and s2 based on normal dot product (original gng.c:741-748)
         # NOTE: Uses the dot product calculated BEFORE the PCA update
