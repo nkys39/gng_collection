@@ -1,0 +1,16 @@
+/livox119/pointcloud_subscriber:
+  ros__parameters:
+    # camera_Angle: 54.476598
+    # camera_height: 0.39
+    angle_x: 0.0
+    angle_y: 90.0
+    angle_z: 0.0
+    camera_height: 1.2183
+    # Topics
+    #pointCloudTopic: "center_livox_lidar"                   # Point cloud data
+    # pointCloudTopic: "livox/lidar"                   # Point cloud data
+    pointCloudTopic: "/livox/lidar_192_168_1_119"                   # Point cloud data
+    #gngViewFrame: "center_livox_frame"
+    # gngViewFrame: "livox_frame"
+    gngViewFrame: "livox2_frame_192_168_1_119"
+    

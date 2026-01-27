@@ -1,0 +1,38 @@
+pointcloud_subscriber:
+  ros__parameters:
+    # # camera_Angle: 54.476598
+    # # camera_height: 0.39
+    # angle_x: 6.0
+    # angle_y: -83.0
+    # angle_z: 176.0
+    # # angle_x: 0.0
+    # # angle_y: 0.0
+    # # angle_z: 0.0
+    # camera_height: 1.24
+    # # Topics
+    # #pointCloudTopic: "center_livox_lidar"                   # Point cloud data
+    # # pointCloudTopic: "livox/lidar"                   # Point cloud data
+    # pointCloudTopic: "/livox/lidar_192_168_0_10"                   # Point cloud data
+    # #gngViewFrame: "center_livox_frame"
+    # # gngViewFrame: "livox_frame"
+    # gngViewFrame: "livox_frame_192_168_0_10"
+
+
+    # angle_x: -2.0
+    # angle_y: 75.0
+    # angle_z: -2.0
+    # camera_height: 1.1
+    pointCloudTopic: "/livox/lidar_192_168_1_146"                   # Point cloud data
+    # gngViewFrame: "base_footprint"
+    
+    # use_tf
+    # pointCloudTopic: "/livox/lidar_192_168_0_10"                   # Point cloud data
+    gng_main_frame_id: "odom"
+    # gng_main_frame_id: "base_footprint"
+    gng_crop_frame_id: "base_footprint"
+    gng_crop_min_x: 0.6
+    gng_crop_max_x: 999.9
+    gng_crop_min_y: -2.0
+    gng_crop_max_y: 2.0
+    gng_crop_min_z: -999.9
+    gng_crop_max_z: 2.0

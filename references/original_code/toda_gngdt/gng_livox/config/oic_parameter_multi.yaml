@@ -1,0 +1,80 @@
+# pointcloud_subscriber:
+#   ros__parameters:
+#     pointCloudTopic: "/livox/lidar_192_168_1_146"                   # Point cloud data
+#     gng_main_frame_id: "odom"
+#     # gng_main_frame_id: "base_footprint"
+#     gng_crop_frame_id: "base_footprint"
+#     gng_crop_min_x: 0.6
+#     gng_crop_max_x: 999.9
+#     gng_crop_min_y: -2.0
+#     gng_crop_max_y: 2.0
+#     gng_crop_min_z: -999.9
+#     gng_crop_max_z: 2.0
+
+
+gng_livox_front_up:
+  ros__parameters:
+    pointCloudTopic: "/livox/lidar_192_168_1_146"
+    gng_main_frame_id: "odom"
+    # gng_main_frame_id: "base_footprint"
+    gng_crop_frame_id: "base_footprint"
+    gng_crop_min_x: 0.5
+    gng_crop_max_x: 2.1
+    gng_crop_min_y: -2.0
+    gng_crop_max_y: 2.0
+    gng_crop_min_z: -999.9
+    gng_crop_max_z: 2.0
+
+gng_livox_front_down:
+  ros__parameters:
+    pointCloudTopic: "/livox/lidar_192_168_1_117"
+    gng_main_frame_id: "odom"
+    # gng_main_frame_id: "base_footprint"
+    gng_crop_frame_id: "base_footprint"
+    gng_crop_min_x: 0.5
+    gng_crop_max_x: 999.9
+    gng_crop_min_y: -2.0
+    gng_crop_max_y: 2.0
+    gng_crop_min_z: -999.9
+    gng_crop_max_z: 2.0
+
+gng_livox_right:
+  ros__parameters:
+    pointCloudTopic: "/livox/lidar_192_168_1_144"
+    gng_main_frame_id: "odom"
+    # gng_main_frame_id: "base_footprint"
+    gng_crop_frame_id: "base_footprint"
+    gng_crop_min_x: -2.0
+    gng_crop_max_x: 2.0
+    gng_crop_min_y: -2.1
+    gng_crop_max_y: -0.32
+    gng_crop_min_z: -999.9
+    gng_crop_max_z: 1.5
+
+gng_livox_left:
+  ros__parameters:
+    pointCloudTopic: "/livox/lidar_192_168_1_181"
+    gng_main_frame_id: "odom"
+    # gng_main_frame_id: "base_footprint"
+    gng_crop_frame_id: "base_footprint"
+    gng_crop_min_x: -2.0
+    gng_crop_max_x: 2.0
+    gng_crop_min_y: 0.32
+    gng_crop_max_y: 2.1
+    gng_crop_min_z: -999.9
+    gng_crop_max_z: 1.5
+
+gng_livox_back:
+  ros__parameters:
+    pointCloudTopic: "/livox/lidar_192_168_1_103"
+    gng_main_frame_id: "odom"
+    # gng_main_frame_id: "base_footprint"
+    gng_crop_frame_id: "base_footprint"
+    gng_crop_min_x: -2.1
+    gng_crop_max_x: -0.47
+    gng_crop_min_y: -2.0
+    gng_crop_max_y: 2.0
+    gng_crop_min_z: -999.9
+    gng_crop_max_z: 1.5
+
+    

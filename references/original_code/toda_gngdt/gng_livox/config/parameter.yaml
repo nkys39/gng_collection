@@ -1,0 +1,22 @@
+gng_livox:
+  ros__parameters:
+    pointCloudTopic: "/livox/points_192_168_1_151"
+
+    gng_main_frame_id: "odom"
+    # gng_main_frame_id: "base_link"
+    gng_crop_frame_id: "base_link"
+    gng_crop_distance: 0.2
+    gng_crop_min_x: -1.9
+    gng_crop_max_x: 1.9
+    gng_crop_min_y: -1.9
+    gng_crop_max_y: 1.9
+    gng_crop_min_z: -999.9
+    gng_crop_max_z: 999.9
+    use_ignore_region: true
+    ignore_region_min_x: -0.35
+    ignore_region_max_x: 0.2
+    ignore_region_min_y: -0.3
+    ignore_region_max_y: 0.3
+    ignore_region_min_z: -1.0
+    ignore_region_max_z: 2.5
+    
