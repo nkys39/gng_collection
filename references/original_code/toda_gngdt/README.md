@@ -1,4 +1,4 @@
-# GNG-DT (GNG for Depth/Terrain)
+# GNG-DT (GNG with Different Topologies)
 
 ## 出典
 
@@ -12,8 +12,9 @@
 
 ## 説明
 
-GNG-DT は、ROS2環境でLivox LiDARデータを処理するためのGNG実装です。
-複数種類のエッジ（位置、色、法線、走行可能性）を持ち、地形分類機能を備えています。
+GNG-DT (GNG with Different Topologies) は、複数の異なるトポロジー（エッジ構造）を同時に学習するGNG実装です。
+ROS2環境でLivox LiDARデータを処理し、位置・色・法線・走行可能性の4種類の独立したエッジを管理します。
+これにより、異なる属性に基づく複数のグラフ構造を同時に獲得できます。
 
 ## ファイル構成
 

@@ -1,4 +1,4 @@
-# DD-GNG (Depth Data GNG)
+# DD-GNG (Dynamic Density GNG)
 
 ## 出典
 
@@ -15,8 +15,9 @@ Copyright 2020 Azhar Aulia Saputra (main.cpp, extDisplay.cpp)
 
 ## 説明
 
-DD-GNG (Depth Data GNG) は、デプスセンサーからのリアルタイム3D点群データを処理するためのGNG拡張実装です。
-ODEシミュレータと連携したロボットビジョンシステムの一部として設計されています。
+DD-GNG (Dynamic Density GNG) は、動的な密度制御を持つGNG拡張実装です。
+デプスセンサーからのリアルタイム3D点群データを処理し、ODEシミュレータと連携したロボットビジョンシステムの一部として設計されています。
+`strength[]`によるノード強度制御で、注視領域や特徴的な領域に対して密度を動的に調整します。
 
 ## アルゴリズム概要
 

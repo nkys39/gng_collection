@@ -7,11 +7,11 @@
 | ディレクトリ | アルゴリズム | 言語 | 作者/出典 | 主な特徴 |
 |-------------|------------|------|----------|---------|
 | `watanabe_gng` | 標準GNG | C++/Eigen | watanabe | テンプレートベース、基本実装 |
-| `azhar_ddgng` | DD-GNG | C++ | Azhar (Kubota研) | デプスセンサー用、法線計算、GNG-U |
+| `azhar_ddgng` | DD-GNG | C++ | Azhar (Kubota研) | 動的密度制御、法線計算、GNG-U |
 | `corner_dbl_gng` | DBL-GNG | Python | Corner | バッチ学習、FCM統合 |
 | `corner_td_ml_gng` | TD-ML-GNG | Python | kubota/Corner | 階層的GNG、Add-if-Silent |
 | `miya_gng` | HNSW-GNG | C++/Eigen | miya | 高速近傍探索、分散共分散行列 |
-| `toda_gngdt` | GNG-DT | C/ROS2 | Toda (Kubota研) | LiDAR用、地形分類 |
+| `toda_gngdt` | GNG-DT | C/ROS2 | Toda (Kubota研) | マルチトポロジー、LiDAR用 |
 | `corner_dataset` | - | - | - | テスト用データセット |
 
 ## アルゴリズム分類
@@ -21,8 +21,8 @@
 - **corner_dbl_gng/standard_gng.py**: Python版標準GNG
 
 ### GNG-U (Utility) 系
-- **azhar_ddgng**: GNG-U + 法線計算 + サーフェス分類
-- **toda_gngdt**: GNG-U + マルチエッジ
+- **azhar_ddgng**: DD-GNG (Dynamic Density) - GNG-U + 動的密度制御 + 法線計算
+- **toda_gngdt**: GNG-DT (Different Topologies) - GNG-U + マルチトポロジー
 
 ### バッチ学習系
 - **corner_dbl_gng/DBL_GNG.py**: Distributed Batch Learning GNG
