@@ -141,6 +141,29 @@ for (int i1 = 0; i1 < ramda; i1++) {
 ```
 lambda_/2回目（100回目）に低Utilityノードを削除。
 
+### 5. 連鎖ノード削除
+```c
+// gng.c:379-386, 427-429
+if(net->edge[del_num][i] == 1){
+    net->edge_ct[i]--;
+    if(net->edge_ct[i] == 0){
+        del_list[del_ct++] = i;  // 孤立ノードをリストに追加
+    }
+}
+for(int i=0;i<del_ct;i++){
+    node_delete(net, del_list[i]);  // 再帰的に削除
+}
+```
+ノード削除時、孤立した近傍ノードも再帰的に削除。
+
+### 6. 新ノードの法線初期化
+```c
+// gng.c:483-485
+for (i = 0; i < DIM; i++)
+    net->node[r][i] = 0.5 * (net->node[q][i] + net->node[f][i]);
+```
+新ノードの全属性（位置、色、法線）をq,fの平均で初期化。
+
 ## パラメータ
 
 ```python
