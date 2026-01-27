@@ -44,6 +44,10 @@ class GNGDTParams:
         tau_color: Color similarity threshold (cthv = 0.05 in original).
         tau_normal: Normal similarity threshold (nthv = 0.998 in original).
             Edge created if |dot product| > tau_normal.
+        dis_thv: Distance threshold for adding new nodes (DIS_THV = 0.5 in original).
+            If winner is further than this, add 2 new nodes at input.
+        thv: Error threshold for node addition (THV = 0.000001 in original).
+            Only add node if average error > thv.
     """
 
     max_nodes: int = 100
@@ -56,6 +60,8 @@ class GNGDTParams:
     # GNG-DT specific parameters
     tau_color: float = 0.05  # Original: cthv = 0.05
     tau_normal: float = 0.998  # Original: nthv = 0.998
+    dis_thv: float = 0.5  # Original: DIS_THV = 0.5
+    thv: float = 0.000001  # Original: THV = 0.001*0.001
 
 
 @dataclass
@@ -138,6 +144,7 @@ class GrowingNeuralGasDT:
         # Counters
         self.n_learning = 0
         self._n_trial = 0
+        self._total_error = 0.0  # Accumulated error for node addition decision
 
         # Initialize with 2 random nodes (like original init_gng)
         self._init_nodes()
@@ -213,6 +220,72 @@ class GrowingNeuralGasDT:
         self.edge_age[n2, n1] = 0
         self.edges_per_node[n1].discard(n2)
         self.edges_per_node[n2].discard(n1)
+
+    def _add_new_node_distance(
+        self, position: np.ndarray, color: np.ndarray | None = None
+    ) -> None:
+        """Add 2 new connected nodes at the input position.
+
+        Original: add_new_node_distance (gng.c:845-899)
+        Called when the winner node is too far from the input (> DIS_THV).
+
+        Args:
+            position: Input 3D position vector.
+            color: Input color vector (optional).
+        """
+        p = self.params
+
+        # Add first node at input position
+        r = self._add_node(position, color)
+        if r == -1:
+            return
+
+        # Add second node slightly offset (original: rnd() * DIS_THV / 10)
+        offset = self.rng.random(3) * p.dis_thv / 10.0
+        q_pos = position + offset
+        q = self._add_node(q_pos, color)
+        if q == -1:
+            self._remove_node(r)
+            return
+
+        # Connect the two new nodes with position edge only
+        # (original: cedge, nedge, pedge all 0 for new distance-based nodes)
+        self._add_position_edge(r, q)
+
+    def _delete_node_gngu(self) -> bool:
+        """Delete node with minimum utility.
+
+        Original: delete_node_gngu (gng.c:552-581)
+        Called at ramda/2 during gng_main loop.
+
+        Returns:
+            True if a node was deleted, False otherwise.
+        """
+        p = self.params
+
+        if self.n_nodes <= 10:
+            return False
+
+        # Find node with minimum utility and minimum error
+        min_u = float("inf")
+        min_u_id = -1
+        min_err = float("inf")
+
+        for node in self.nodes:
+            if node.id == -1:
+                continue
+            if node.utility < min_u:
+                min_u = node.utility
+                min_u_id = node.id
+            if node.error < min_err:
+                min_err = node.error
+
+        # Delete if min_err < THV (original gng.c:574-578)
+        if min_err < p.thv and min_u_id != -1:
+            self._remove_node(min_u_id)
+            return True
+
+        return False
 
     def _compute_normal_pca(self, node_id: int) -> np.ndarray:
         """Compute normal vector using PCA on node + neighbor positions.
@@ -410,17 +483,43 @@ class GrowingNeuralGasDT:
                 node.utility = 0.0
 
     def _node_add(self) -> None:
-        """Add a new node (original node_add_gng)."""
+        """Add a new node (original node_add_gng).
+
+        Original gng.c:432-550.
+        Also includes utility-based deletion of low-utility nodes.
+        """
+        p = self.params
+
         if not self._addable_indices:
             return
 
-        # Find node q with maximum error
+        # Find node q with maximum error, minimum utility, and minimum error
+        # Also build delete list (original gng.c:445-468)
         max_err = -1.0
         q = -1
+        min_u = float("inf")
+        min_u_id = -1
+        min_err = float("inf")
+        delete_list = []
+
         for node in self.nodes:
-            if node.id != -1 and node.error > max_err:
+            if node.id == -1:
+                continue
+
+            if node.error > max_err:
                 max_err = node.error
                 q = node.id
+
+            if node.utility < min_u:
+                min_u = node.utility
+                min_u_id = node.id
+
+            if node.error < min_err:
+                min_err = node.error
+
+            # Original: if(net->gng_u[i]*1000000.0 < 100.0) -> u < 0.0001
+            if node.utility < 0.0001:
+                delete_list.append(node.id)
 
         if q == -1:
             return
@@ -478,19 +577,36 @@ class GrowingNeuralGasDT:
         self.nodes[r].error = self.nodes[q].error
         self.nodes[r].utility = self.nodes[q].utility
 
+        # Utility-based deletion (original gng.c:544-549)
+        # Delete low-utility nodes if network is large and error is small
+        if self.n_nodes > 10 and min_err < p.thv:
+            for del_id in delete_list:
+                if self.nodes[del_id].id != -1 and del_id != r:
+                    self._remove_node(del_id)
+
     def _one_train_update(
         self,
         position: np.ndarray,
         color: np.ndarray | None = None,
-    ) -> None:
-        """Single training iteration (mirrors original learn_epoch + gng_main)."""
+    ) -> float:
+        """Single training iteration (mirrors original learn_epoch).
+
+        Returns the squared distance to the winner for error accumulation.
+        """
         p = self.params
 
         # Find two nearest nodes
         s1, s2, dist1_sq, dist2_sq = self._find_two_nearest(position)
 
         if s1 == -1 or s2 == -1:
-            return
+            return 0.0
+
+        # DIS_THV check (original gng.c:953-957)
+        # If winner is too far, add 2 new nodes at input and return
+        if dist1_sq > p.dis_thv * p.dis_thv and self.n_nodes < p.max_nodes - 2:
+            self._add_new_node_distance(position, color)
+            self._discount_errors()
+            return 0.0
 
         # Update accumulated error and utility (original gng.c:960-962)
         self.nodes[s1].error += dist1_sq
@@ -499,16 +615,49 @@ class GrowingNeuralGasDT:
         # Learning step
         self._gng_learn(s1, s2, position, color, p.eps_b, p.eps_n)
 
-        # Decay errors (original discount_err_gng called in learn_epoch)
+        # Decay errors (original: inside gng_learn for all nodes)
         self._discount_errors()
 
-        # Periodically add new node (original gng_main)
-        self._n_trial += 1
-        if self._n_trial >= p.lambda_:
-            self._n_trial = 0
-            self._node_add()
-
         self.n_learning += 1
+        return dist1_sq
+
+    def _gng_main_cycle(
+        self,
+        data: np.ndarray,
+        colors: np.ndarray | None = None,
+    ) -> None:
+        """Run one gng_main cycle (lambda_ iterations + node addition).
+
+        Original gng_main (gng.c:973-993):
+            - Run ramda iterations
+            - At ramda/2, call delete_node_gngu (flag=2)
+            - After ramda, add node if total_error > THV
+        """
+        p = self.params
+        n_samples = len(data)
+        total_error = 0.0
+
+        for i in range(p.lambda_):
+            # Random sample selection
+            idx = self.rng.integers(0, n_samples)
+            color = colors[idx] if colors is not None else None
+
+            # At ramda/2, use flag=2 (call delete_node_gngu)
+            if i == p.lambda_ // 2:
+                error = self._one_train_update(data[idx], color)
+                total_error += error
+                # flag=2: call delete_node_gngu
+                if self.n_nodes > 2:
+                    self._delete_node_gngu()
+            else:
+                # flag=1: normal learning
+                error = self._one_train_update(data[idx], color)
+                total_error += error
+
+        # Node addition (original gng.c:986-990)
+        total_error /= p.lambda_
+        if self.n_nodes < p.max_nodes and total_error > p.thv:
+            self._node_add()
 
     def train(
         self,
@@ -519,24 +668,32 @@ class GrowingNeuralGasDT:
     ) -> GrowingNeuralGasDT:
         """Train on data for multiple iterations.
 
+        Uses the original gng_main cycle approach:
+            - Every lambda_ iterations = 1 gng_main cycle
+            - n_iterations specifies total learning steps
+
         Args:
             data: Training data of shape (n_samples, 3) for positions.
             colors: Optional color data of shape (n_samples, 3).
             n_iterations: Number of training iterations.
-            callback: Optional callback(self, iteration) called each iteration.
+            callback: Optional callback(self, iteration) called per gng_main cycle.
 
         Returns:
             self for chaining.
         """
-        n_samples = len(data)
+        p = self.params
 
-        for i in range(n_iterations):
-            idx = self.rng.integers(0, n_samples)
-            color = colors[idx] if colors is not None else None
-            self._one_train_update(data[idx], color)
+        # Calculate number of gng_main cycles
+        n_cycles = n_iterations // p.lambda_
+        if n_cycles == 0:
+            n_cycles = 1
+
+        for cycle in range(n_cycles):
+            self._gng_main_cycle(data, colors)
 
             if callback is not None:
-                callback(self, i)
+                # Call callback with iteration count (cycle * lambda_)
+                callback(self, cycle * p.lambda_)
 
         return self
 
@@ -545,8 +702,33 @@ class GrowingNeuralGasDT:
         position: np.ndarray,
         color: np.ndarray | None = None,
     ) -> GrowingNeuralGasDT:
-        """Single online learning step."""
-        self._one_train_update(position, color)
+        """Single online learning step.
+
+        Follows original gng_main logic:
+            - Accumulates error over lambda_ iterations
+            - At lambda_/2, calls delete_node_gngu
+            - After lambda_ iterations, adds node if error > THV
+        """
+        p = self.params
+
+        # Run single learning iteration
+        error = self._one_train_update(position, color)
+        self._total_error += error
+        self._n_trial += 1
+
+        # At lambda_/2, call delete_node_gngu (flag=2)
+        if self._n_trial == p.lambda_ // 2:
+            if self.n_nodes > 2:
+                self._delete_node_gngu()
+
+        # After lambda_ iterations, check for node addition
+        if self._n_trial >= p.lambda_:
+            avg_error = self._total_error / p.lambda_
+            if self.n_nodes < p.max_nodes and avg_error > p.thv:
+                self._node_add()
+            self._n_trial = 0
+            self._total_error = 0.0
+
         return self
 
     @property

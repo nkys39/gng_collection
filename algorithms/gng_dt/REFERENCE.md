@@ -91,6 +91,56 @@ if (fabs(dis) > net->nthv) {
 | 法線計算 | なし | PCAによる**毎回**更新 |
 | nedge更新 | - | **s1-s2間のみ** |
 
+## オリジナルの追加機能
+
+### 1. 距離閾値によるノード追加（DIS_THV）
+```c
+// gng.c:844, 953-957
+#define DIS_THV 0.5
+if(mindis > DIS_THV*DIS_THV && net->node_n < GNGN-2){
+    add_new_node_distance(net, v[t]);  // 入力位置に2ノード追加
+    return 0;
+}
+```
+勝者ノードが入力から遠い場合（距離 > 0.5）、入力位置に2つの新ノードを追加。
+
+### 2. THV条件付きノード追加
+```c
+// gng.c:18, 986-990
+#define THV 0.001*0.001  // = 0.000001
+total_error /= (double)ramda;
+if (net->node_n < GNGN && total_error > THV){
+    node_add_gng(net);
+}
+```
+lambda_回の学習後、平均誤差が閾値（THV）を超えた場合のみノードを追加。
+
+### 3. Utility削除（node_add_gng内）
+```c
+// gng.c:461-463, 544-549
+if(net->gng_u[i]*1000000.0 < 100.0){  // u < 0.0001
+    delete_list[delete_num++] = i;
+}
+if (net->node_n > 10 && min_err < THV){
+    for(int i=0;i<delete_num;i++){
+        node_delete(net, delete_list[i]);
+    }
+}
+```
+ノード追加時、低Utility（< 0.0001）のノードを削除。
+
+### 4. ramda/2でのdelete_node_gngu
+```c
+// gng.c:980-984
+for (int i1 = 0; i1 < ramda; i1++) {
+    if (i1 != ramda/2)
+        learn_epoch(net, v, dmax, 0.05, 0.0005, 1);
+    else
+        learn_epoch(net, v, dmax, 0.05, 0.0005, 2);  // flag=2でdelete_node_gngu
+}
+```
+lambda_/2回目（100回目）に低Utilityノードを削除。
+
 ## パラメータ
 
 ```python
@@ -105,17 +155,26 @@ class GNGDTParams:
     max_age: int = 88         # 最大エッジ年齢（オリジナル: MAX_AGE = 88）
     tau_color: float = 0.05   # 色閾値（オリジナル: cthv = 0.05）
     tau_normal: float = 0.998 # 法線閾値（|内積| > 0.998、オリジナル: nthv = 0.998）
+    dis_thv: float = 0.5      # 距離閾値（オリジナル: DIS_THV = 0.5）
+    thv: float = 0.000001     # ノード追加誤差閾値（オリジナル: THV = 0.001*0.001）
 ```
 
 ### オリジナルコードのパラメータ（toda_gngdt/gng.c）
 
 ```c
+// gng.h:11-18
+#define GNGN 1000       // 最大ノード数
+#define DIM 11          // ノードの次元数
+#define LDIM 4          // 学習次元数（x,y,z + 1属性）
+#define THV 0.001*0.001 // ノード追加閾値
+
 // gng.c:144-148
 net->cthv = 0.05;     // 色閾値
 net->nthv = 0.998;    // 法線閾値（fabs(dot) > nthv）
 
-// gng.c:590
+// gng.c:590, 844
 const int MAX_AGE = 88;
+#define DIS_THV 0.5
 
 // gng.c:975, 981
 const int ramda = 200;
