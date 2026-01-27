@@ -344,6 +344,15 @@ if (net->traversability_property[s1] == net->traversability_property[i]) {
 
 ### 輪郭検出 (judge_contour)
 
+**参照論文**: 戸田雄一郎ほか (2021). "Growing Neural Gas に基づく環境のトポロジカルマップの構築と未知環境における経路計画", 知能と情報, Vol. 33, No. 4, pp. 872-884
+
+**アルゴリズム**:
+1. 走行可能ノードのpedge近傍への角度を計算
+2. 角度をソートし、連続する角度間のギャップを確認
+3. ギャップが135°以上あれば輪郭ノードとみなす
+
+**注意**: 輪郭検出は走行可能ノード（`traversability_property == 1`）のみに適用される。
+
 ```c
 // gng.c:39-67
 // pedge近傍への角度を計算し、135度以上のギャップがあれば輪郭
