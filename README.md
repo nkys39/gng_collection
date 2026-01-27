@@ -219,6 +219,14 @@ Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
 |:--------:|:--------:|
 | ![GNG-DT 3D](experiments/3d_pointcloud/samples/gng_dt/python/floor_wall_growth.gif) | ![GNG-DT 3D Final](experiments/3d_pointcloud/samples/gng_dt/python/floor_wall_final.png) |
 
+### GNG-DT Robot (Traversability Analysis)
+
+ロボット向け拡張版。走行可能性解析を追加。緑=走行可能（水平面）、赤=走行不可（壁面）、オレンジ=輪郭ノード（走行可能領域の境界）。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-DT Robot 3D](experiments/3d_pointcloud/samples/gng_dt_robot/python/floor_wall_growth.gif) | ![GNG-DT Robot 3D Final](experiments/3d_pointcloud/samples/gng_dt_robot/python/floor_wall_final.png) |
+
 ### GCS
 
 単体複体（simplicial complex）構造を維持しながら成長。3Dでは四面体から開始。
