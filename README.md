@@ -15,6 +15,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | **AiS-GNG** | GNG-U2 + Add-if-Silentルール、高密度位相構造の高速生成 |
 | **GNG-T** | GNG + ヒューリスティック三角形分割（四角形探索・交差点探索） |
 | **GNG-D** | GNG + 明示的Delaunay三角形分割（scipy.spatial.Delaunay） |
+| **GNG-DT** | GNG + 複数トポロジー学習（位置、色、法線で独立したエッジ構造）。ロボット版も提供 |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
 
@@ -210,6 +211,22 @@ Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
 |:--------:|:--------:|
 | ![GNG-D 3D](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_growth.gif) | ![GNG-D 3D Final](experiments/3d_pointcloud/samples/gng_d/python/floor_wall_final.png) |
 
+### GNG-DT (Different Topologies)
+
+複数の独立したトポロジーを学習。位置ベースエッジ（赤）と法線類似度エッジ（青）を同時に可視化。床と壁で法線方向が異なるため、法線トポロジーでは自然に分離される。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-DT 3D](experiments/3d_pointcloud/samples/gng_dt/python/floor_wall_growth.gif) | ![GNG-DT 3D Final](experiments/3d_pointcloud/samples/gng_dt/python/floor_wall_final.png) |
+
+### GNG-DT Robot (Traversability Analysis)
+
+ロボット向け拡張版。走行可能性解析を追加。緑=走行可能（水平面）、赤=走行不可（壁面）、オレンジ=輪郭ノード（走行可能領域の境界）。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-DT Robot 3D](experiments/3d_pointcloud/samples/gng_dt_robot/python/floor_wall_growth.gif) | ![GNG-DT Robot 3D Final](experiments/3d_pointcloud/samples/gng_dt_robot/python/floor_wall_final.png) |
+
 ### GCS
 
 単体複体（simplicial complex）構造を維持しながら成長。3Dでは四面体から開始。
@@ -235,6 +252,7 @@ gng_collection/
 │   ├── ais_gng/         # AiS-GNG (Add-if-Silent Rule)
 │   ├── gng_t/           # GNG-T (Triangulation - Kubota 2008)
 │   ├── gng_d/           # GNG-D (explicit Delaunay)
+│   ├── gng_dt/          # GNG-DT (Different Topologies)
 │   ├── som/             # Self-Organizing Map
 │   ├── neural_gas/      # Neural Gas
 │   ├── gcs/             # Growing Cell Structures
@@ -262,6 +280,7 @@ gng_collection/
 | AiS-GNG     | ✓      | ✓   | Add-if-Silent GNG - 高密度位相構造の高速生成 |
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
+| GNG-DT      | ✓      | -   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版あり） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
@@ -398,6 +417,65 @@ gng_d.train(X, n_iterations=5000)
 nodes, edges = gng_d.get_graph()
 triangles = gng_d.get_triangles()  # Delaunay三角形を取得
 ```
+
+### GNG-DT (Different Topologies)
+
+3D点群用。位置、色、法線それぞれに独立したエッジトポロジーを学習。
+
+```python
+from algorithms.gng_dt.python.model import GrowingNeuralGasDT, GNGDTParams
+
+params = GNGDTParams(
+    max_nodes=150,
+    tau_normal=0.90,   # 法線類似度閾値（内積 > 0.90 で接続）
+    tau_color=0.05,    # 色類似度閾値
+)
+gng_dt = GrowingNeuralGasDT(params=params)
+gng_dt.train(points_3d, n_iterations=8000)  # 3D点群
+
+# 複数トポロジーの取得
+nodes, pos_edges, color_edges, normal_edges = gng_dt.get_multi_graph()
+
+# 法線ベクトルの取得（PCAで自動計算）
+normals = gng_dt.get_node_normals()
+```
+
+### GNG-DT Robot（走行可能性解析）
+
+ロボット向け拡張版。走行可能領域の自動検出、輪郭抽出、傾斜コスト計算機能を追加。
+
+```python
+from algorithms.gng_dt.python.model_robot import GrowingNeuralGasDTRobot, GNGDTRobotParams
+
+params = GNGDTRobotParams(
+    max_nodes=150,
+    max_angle=20.0,    # 走行可能最大傾斜角度（度）
+    tau_normal=0.998,  # 法線類似度閾値
+)
+gng = GrowingNeuralGasDTRobot(params=params)
+gng.train(points_3d, n_iterations=8000)
+
+# 走行可能ノードの取得（水平で平面的な領域）
+traversable_nodes = gng.get_traversable_nodes()
+
+# 走行可能領域の輪郭ノード
+contour_nodes = gng.get_contour_nodes()
+
+# 傾斜コスト（経路計画用）
+degree = gng.get_degree()
+
+# 全トポロジーの取得（位置、色、法線、走行可能性）
+nodes, pos_edges, color_edges, normal_edges, trav_edges = gng.get_multi_graph()
+```
+
+**ロボット版の主な機能：**
+| 機能 | 説明 |
+|------|------|
+| `traversability_property` | 水平かつ平面的な領域を走行可能と判定 |
+| `pedge` | 同じ走行可能性を持つノード間のエッジ |
+| `contour` | 走行可能領域の境界検出 |
+| `degree` | 傾斜コスト（経路計画用） |
+| `curvature` | 曲率コスト（PCA残差ベース） |
 
 ### SOM
 
@@ -550,6 +628,7 @@ from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
 - **AiS-GNG-AM (SMC)**: Shoji, M., Obo, T., & Kubota, N. (2023). "Add-if-Silent Rule-Based Growing Neural Gas with Amount of Movement for High-Density Topological Structure Generation of Dynamic Object" (IEEE SMC 2023, pp. 3040-3047)
 - **GNG-T**: Kubota, N. & Satomi, M. (2008). "Growing Neural Gas with Triangulation"
 - **GNG-D**: Martinetz & Schulten (1994) の明示的Delaunay手法を応用
+- **GNG-DT**: Toda, Y., et al. (2022). "Learning of Point Cloud Data by Growing Neural Gas with Different Topologies"
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"
 - **Neural Gas**: Martinetz, T. and Schulten, K. (1991). "A Neural-Gas Network Learns Topologies"
 - **GCS**: Fritzke, B. (1994). "Growing cell structures - a self-organizing network"
