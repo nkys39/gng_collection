@@ -20,6 +20,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gcs/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/hcl/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/lbg/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/growing_grid/cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng_dt/cpp)
 
 # Single ring test
 add_executable(test_gng_single_ring test_gng_single_ring.cpp)
