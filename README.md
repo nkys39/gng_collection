@@ -16,6 +16,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | **GNG-T** | GNG + ヒューリスティック三角形分割（四角形探索・交差点探索） |
 | **GNG-D** | GNG + 明示的Delaunay三角形分割（scipy.spatial.Delaunay） |
 | **GNG-DT** | GNG + 複数トポロジー学習（位置、色、法線で独立したエッジ構造）。ロボット版も提供 |
+| **AiS-GNG-DT** | GNG-DT + AiS-GNGの組み合わせ実験（複数トポロジー + Add-if-Silent + Utility管理） |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
 
@@ -245,6 +246,14 @@ Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
 |:--------:|:--------:|
 | ![GNG-DT Robot 3D C++](experiments/3d_pointcloud/samples/gng_dt_robot/cpp/floor_wall_growth.gif) | ![GNG-DT Robot 3D Final C++](experiments/3d_pointcloud/samples/gng_dt_robot/cpp/floor_wall_final.png) |
 
+### AiS-GNG-DT (実験的)
+
+GNG-DTとAiS-GNGを組み合わせた実験的アルゴリズム。複数トポロジー学習にAdd-if-SilentルールとUtility管理を追加し、高速な構造生成と非定常分布への適応を両立。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![AiS-GNG-DT 3D](experiments/3d_pointcloud/samples/ais_gng_dt/python/floor_wall_growth.gif) | ![AiS-GNG-DT 3D Final](experiments/3d_pointcloud/samples/ais_gng_dt/python/floor_wall_final.png) |
+
 ### GCS
 
 単体複体（simplicial complex）構造を維持しながら成長。3Dでは四面体から開始。
@@ -271,6 +280,7 @@ gng_collection/
 │   ├── gng_t/           # GNG-T (Triangulation - Kubota 2008)
 │   ├── gng_d/           # GNG-D (explicit Delaunay)
 │   ├── gng_dt/          # GNG-DT (Different Topologies)
+│   ├── ais_gng_dt/      # AiS-GNG-DT (実験的: GNG-DT + AiS-GNG)
 │   ├── som/             # Self-Organizing Map
 │   ├── neural_gas/      # Neural Gas
 │   ├── gcs/             # Growing Cell Structures
@@ -299,6 +309,7 @@ gng_collection/
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
 | GNG-DT      | ✓      | ✓   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版C++含む） |
+| AiS-GNG-DT  | ✓      | -   | GNG-DT + AiS-GNG 実験的組み合わせ（複数トポロジー + Add-if-Silent） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
