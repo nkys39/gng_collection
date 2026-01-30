@@ -280,7 +280,7 @@ gng_collection/
 | AiS-GNG     | ✓      | ✓   | Add-if-Silent GNG - 高密度位相構造の高速生成 |
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
-| GNG-DT      | ✓      | ✓   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版あり） |
+| GNG-DT      | ✓      | ✓   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版C++含む） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |

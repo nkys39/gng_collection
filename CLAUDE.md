@@ -236,7 +236,7 @@ git add -f experiments/2d_visualization/samples/
 | GNG-T       | ✓      | ✓   | ヒューリスティック三角形分割（Kubota 2008） |
 | GNG-T (Kubota)| ✓    | -   | Kubotalab論文完全準拠版（γ式使用） |
 | GNG-D       | ✓      | -   | 明示的Delaunay三角形分割（scipy.spatial） |
-| GNG-DT      | ✓      | ✓   | 複数トポロジー学習（位置/色/法線、3D点群用） |
+| GNG-DT      | ✓      | ✓   | 複数トポロジー学習（位置/色/法線、3D点群用、ロボット版含む） |
 | SOM         | ✓      | ✓   | Self-Organizing Map |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures |
