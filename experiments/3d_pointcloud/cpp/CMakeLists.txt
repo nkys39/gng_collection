@@ -14,6 +14,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng_u/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng_u2/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/ais_gng/cpp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/gng_dt/cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../algorithms/ais_gng_dt/cpp)
 
 # GNG floor wall test
 add_executable(test_gng_floor_wall test_gng_floor_wall.cpp)
@@ -42,3 +43,7 @@ target_link_libraries(test_aisgng_am_floor_wall Eigen3::Eigen)
 # AiS-GNG-RO-MAN floor wall test
 add_executable(test_aisgng_roman_floor_wall test_aisgng_roman_floor_wall.cpp)
 target_link_libraries(test_aisgng_roman_floor_wall Eigen3::Eigen)
+
+# AiS-GNG-DT floor wall test
+add_executable(test_aisgngdt_floor_wall test_aisgngdt_floor_wall.cpp)
+target_link_libraries(test_aisgngdt_floor_wall Eigen3::Eigen)

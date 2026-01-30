@@ -250,9 +250,15 @@ Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
 
 GNG-DTとAiS-GNGを組み合わせた実験的アルゴリズム。複数トポロジー学習にAdd-if-SilentルールとUtility管理を追加し、高速な構造生成と非定常分布への適応を両立。
 
+**Python実装:**
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
 | ![AiS-GNG-DT 3D](experiments/3d_pointcloud/samples/ais_gng_dt/python/floor_wall_growth.gif) | ![AiS-GNG-DT 3D Final](experiments/3d_pointcloud/samples/ais_gng_dt/python/floor_wall_final.png) |
+
+**C++実装:**
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![AiS-GNG-DT 3D C++](experiments/3d_pointcloud/samples/ais_gng_dt/cpp/floor_wall_growth.gif) | ![AiS-GNG-DT 3D Final C++](experiments/3d_pointcloud/samples/ais_gng_dt/cpp/floor_wall_final.png) |
 
 ### GCS
 
@@ -309,7 +315,7 @@ gng_collection/
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
 | GNG-DT      | ✓      | ✓   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版C++含む） |
-| AiS-GNG-DT  | ✓      | -   | GNG-DT + AiS-GNG 実験的組み合わせ（複数トポロジー + Add-if-Silent） |
+| AiS-GNG-DT  | ✓      | ✓   | GNG-DT + AiS-GNG 実験的組み合わせ（複数トポロジー + Add-if-Silent） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
