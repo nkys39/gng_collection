@@ -50,12 +50,12 @@ int main(int argc, char* argv[]) {
     params.alpha = 0.5f;
     params.beta = 0.005f;
     params.max_age = 100;
-    params.k = 1.0f;
+    params.utility_k = 1.3f;
 
     std::cout << "GNG-U Parameters:\n";
     std::cout << "  max_nodes: " << params.max_nodes << "\n";
     std::cout << "  lambda: " << params.lambda << "\n";
-    std::cout << "  k: " << params.k << "\n\n";
+    std::cout << "  utility_k: " << params.utility_k << "\n\n";
 
     gng_u::GNGU3f model(params, seed);
     model.init();

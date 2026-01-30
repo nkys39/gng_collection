@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     params.alpha = 0.5f;
     params.beta = 0.005f;
     params.max_age = 100;
-    params.k = 1.0f;
+    params.utility_k = 1000.0f;
     params.kappa = 10;
     params.am_threshold = 0.01f;
 

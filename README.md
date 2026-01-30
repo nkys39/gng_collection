@@ -191,9 +191,15 @@ Utility付きGNG。低利用ノードを削除して非定常分布に対応。
 
 Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
 
+**Python実装:**
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
 | ![AiS-GNG 3D](experiments/3d_pointcloud/samples/ais_gng/python/floor_wall_growth.gif) | ![AiS-GNG 3D Final](experiments/3d_pointcloud/samples/ais_gng/python/floor_wall_final.png) |
+
+**C++実装:**
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![AiS-GNG 3D C++](experiments/3d_pointcloud/samples/ais_gng/cpp/floor_wall_growth.gif) | ![AiS-GNG 3D Final C++](experiments/3d_pointcloud/samples/ais_gng/cpp/floor_wall_final.png) |
 
 ### GNG-T
 
@@ -215,17 +221,29 @@ Add-if-Silentルール付きGNG。高密度位相構造を高速生成。
 
 複数の独立したトポロジーを学習。位置ベースエッジ（赤）と法線類似度エッジ（青）を同時に可視化。床と壁で法線方向が異なるため、法線トポロジーでは自然に分離される。
 
+**Python実装:**
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
 | ![GNG-DT 3D](experiments/3d_pointcloud/samples/gng_dt/python/floor_wall_growth.gif) | ![GNG-DT 3D Final](experiments/3d_pointcloud/samples/gng_dt/python/floor_wall_final.png) |
+
+**C++実装:**
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-DT 3D C++](experiments/3d_pointcloud/samples/gng_dt/cpp/floor_wall_growth.gif) | ![GNG-DT 3D Final C++](experiments/3d_pointcloud/samples/gng_dt/cpp/floor_wall_final.png) |
 
 ### GNG-DT Robot (Traversability Analysis)
 
 ロボット向け拡張版。走行可能性解析を追加。緑=走行可能（水平面）、赤=走行不可（壁面）、オレンジ=輪郭ノード（走行可能領域の境界）。
 
+**Python実装:**
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
 | ![GNG-DT Robot 3D](experiments/3d_pointcloud/samples/gng_dt_robot/python/floor_wall_growth.gif) | ![GNG-DT Robot 3D Final](experiments/3d_pointcloud/samples/gng_dt_robot/python/floor_wall_final.png) |
+
+**C++実装:**
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG-DT Robot 3D C++](experiments/3d_pointcloud/samples/gng_dt_robot/cpp/floor_wall_growth.gif) | ![GNG-DT Robot 3D Final C++](experiments/3d_pointcloud/samples/gng_dt_robot/cpp/floor_wall_final.png) |
 
 ### GCS
 
