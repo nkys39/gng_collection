@@ -1,4 +1,54 @@
-# GSRM (Growing Self-Reconstruction Meshes) 再現実装計画
+# GSRM (Growing Self-Reconstruction Meshes) 再現実装
+
+## 実験結果
+
+### 球体 (Sphere) 表面再構成
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![Growth](samples/gsrm/python/sphere_growth.gif) | ![Final](samples/gsrm/python/sphere_final.png) |
+
+**パラメータ**: max_nodes=300, lambda_=50, n_iterations=15000
+**結果**: 300 nodes, 1709 edges, 1509 faces
+
+### トーラス (Torus) 表面再構成
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![Growth](samples/gsrm/python/torus_growth.gif) | ![Final](samples/gsrm/python/torus_final.png) |
+
+**パラメータ**: max_nodes=400, lambda_=50, n_iterations=20000
+**結果**: 400 nodes, 2631 edges, 2204 faces
+
+### 手法比較 (GNG vs GCS vs GSRM)
+
+#### 球体での比較
+![Sphere Comparison](samples/gsrm/python/compare_sphere.png)
+
+#### トーラスでの比較
+![Torus Comparison](samples/gsrm/python/compare_torus.png)
+
+**比較結果** (200ノード、10000イテレーション):
+
+| Shape | Method | Nodes | Edges | Faces | Time (s) |
+|-------|--------|-------|-------|-------|----------|
+| Sphere | GNG | 200 | 500 | 0 | 3.91 |
+| Sphere | GCS | 200 | 730 | 869 | 3.82 |
+| Sphere | GSRM | 200 | 1167 | 1043 | 4.42 |
+| Torus | GNG | 200 | 493 | 0 | 3.81 |
+| Torus | GCS | 200 | 670 | 747 | 3.83 |
+| Torus | GSRM | 200 | 1281 | 1139 | 4.71 |
+
+**各手法の特性**:
+
+| Feature | GNG | GCS | GSRM |
+|---------|-----|-----|------|
+| Wireframe (edges) | Yes | Yes | Yes |
+| Triangle Faces | No | Yes | Yes |
+| Topology Learning | No | No | Yes |
+| Hole Reconstruction | No | No | Yes |
+
+---
 
 ## 論文情報
 
@@ -166,14 +216,14 @@ experiments/gsrm_surface_reconstruction/
 #### Phase 1: 基本アルゴリズム実装
 
 **タスク**:
-1. [ ] `GSRMParams` データクラス作成
-2. [ ] `GSRMNode` データクラス作成（三角形面の参照を含む）
-3. [ ] 三角形面（Face）管理クラス作成
-4. [ ] 3勝者検索 `_find_three_nearest()`
-5. [ ] ECHL実装 `_extended_chl()`
-6. [ ] エッジ・面削除 `_remove_invalid_edges_and_faces()`
-7. [ ] GCS方式ノード挿入 `_insert_node_gcs()`
-8. [ ] メインループ `_one_train_update()`
+1. [x] `GSRMParams` データクラス作成
+2. [x] `GSRMNode` データクラス作成（三角形面の参照を含む）
+3. [x] 三角形面（Face）管理クラス作成
+4. [x] 3勝者検索 `_find_three_nearest()`
+5. [x] ECHL実装 `_extended_chl()`
+6. [x] エッジ・面削除 `_remove_invalid_edges_and_faces()`
+7. [x] GCS方式ノード挿入 `_insert_node_gcs()`
+8. [x] メインループ `_one_train_update()`
 
 **データ構造**:
 ```python
@@ -200,16 +250,16 @@ class GSRM:
 #### Phase 2: テストと可視化
 
 **タスク**:
-1. [ ] 3D点群サンプラー拡張（球、トーラス、円筒など）
-2. [ ] 3Dメッシュ可視化関数
-3. [ ] 成長過程GIF生成
-4. [ ] ワイヤーフレームと面の両方を可視化
+1. [x] 3D点群サンプラー拡張（球、トーラス、円筒など）
+2. [x] 3Dメッシュ可視化関数
+3. [x] 成長過程GIF生成
+4. [x] ワイヤーフレームと面の両方を可視化
 
 #### Phase 3: 再現実験
 
 **タスク**:
-1. [ ] 球体での基本動作確認
-2. [ ] トーラスでの穴の再構成確認
+1. [x] 球体での基本動作確認
+2. [x] トーラスでの穴の再構成確認
 3. [ ] Stanford Bunnyでの凹領域再構成確認
 4. [ ] 異なる解像度（20, 100, 500, 1000, 5000ノード）での比較
 5. [ ] Hausdorff距離による定量評価
@@ -217,9 +267,9 @@ class GSRM:
 #### Phase 4: 比較実験
 
 **タスク**:
-1. [ ] 標準GNG（ワイヤーフレームのみ）との比較
-2. [ ] 標準GCS（位相制約あり）との比較
-3. [ ] 計算時間の測定
+1. [x] 標準GNG（ワイヤーフレームのみ）との比較
+2. [x] 標準GCS（位相制約あり）との比較
+3. [x] 計算時間の測定
 
 ---
 
