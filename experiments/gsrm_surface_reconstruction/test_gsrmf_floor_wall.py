@@ -234,7 +234,7 @@ def main():
 
     # Create final state figure
     print("Creating final state figure...")
-    fig = plt.figure(figsize=(14, 5))
+    fig = plt.figure(figsize=(16, 8), facecolor="white")
 
     final_state = states[-1]
     nodes = final_state["nodes"]
@@ -242,8 +242,8 @@ def main():
     faces = final_state["faces"]
     is_edge = final_state["is_edge"]
 
-    # 3D view
-    ax1 = fig.add_subplot(131, projection="3d")
+    # Left: 3D perspective view
+    ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     if len(nodes) > 0:
         # Draw faces
         if len(faces) > 0:
@@ -272,76 +272,50 @@ def main():
             )
 
     ax1.set_xlabel("X")
-    ax1.set_ylabel("Y")
-    ax1.set_zlabel("Z")
+    ax1.set_ylabel("Y (depth)")
+    ax1.set_zlabel("Z (height)")
     ax1.set_xlim(-0.1, 1.1)
     ax1.set_ylim(-0.1, 1.1)
     ax1.set_zlim(-0.1, 1.1)
-    ax1.set_title("3D View")
+    ax1.set_title(f"GSRM-F 3D - Perspective View ({final_state['n_nodes']} nodes, "
+                 f"{final_state['n_edge_nodes']} edge nodes)")
     ax1.view_init(elev=25, azim=120)
     ax1.legend(loc="upper right", fontsize=8)
 
-    # Top view (XY plane)
-    ax2 = fig.add_subplot(132)
+    # Right: Pure 2D side view (YZ plane)
+    # Z axis vertical (up = positive), Y axis horizontal (left = positive)
+    ax2 = fig.add_subplot(1, 2, 2)
     if len(nodes) > 0:
+        # Draw edges (Y horizontal, Z vertical)
         for e in edges:
             if e[0] < len(nodes) and e[1] < len(nodes):
                 ax2.plot(
-                    [nodes[e[0], 0], nodes[e[1], 0]],
                     [nodes[e[0], 1], nodes[e[1], 1]],
-                    c="lightgray", linewidth=0.5
-                )
-        edge_mask = np.array(is_edge)
-        if np.any(edge_mask):
-            ax2.scatter(nodes[edge_mask, 0], nodes[edge_mask, 1],
-                       c="blue", s=30, label="Edge")
-        if np.any(~edge_mask):
-            ax2.scatter(nodes[~edge_mask, 0], nodes[~edge_mask, 1],
-                       c="gray", s=10, alpha=0.5, label="Surface")
-
-    ax2.set_xlabel("X")
-    ax2.set_ylabel("Y")
-    ax2.set_xlim(-0.1, 1.1)
-    ax2.set_ylim(-0.1, 1.1)
-    ax2.set_aspect("equal")
-    ax2.set_title("Top View (XY)")
-    ax2.legend(fontsize=8)
-
-    # Side view (XZ plane)
-    ax3 = fig.add_subplot(133)
-    if len(nodes) > 0:
-        for e in edges:
-            if e[0] < len(nodes) and e[1] < len(nodes):
-                ax3.plot(
-                    [nodes[e[0], 0], nodes[e[1], 0]],
                     [nodes[e[0], 2], nodes[e[1], 2]],
                     c="lightgray", linewidth=0.5
                 )
+
+        # Draw nodes
         edge_mask = np.array(is_edge)
         if np.any(edge_mask):
-            ax3.scatter(nodes[edge_mask, 0], nodes[edge_mask, 2],
-                       c="blue", s=30, label="Edge")
+            ax2.scatter(nodes[edge_mask, 1], nodes[edge_mask, 2],
+                       c="blue", s=30, zorder=5, label="Edge nodes")
         if np.any(~edge_mask):
-            ax3.scatter(nodes[~edge_mask, 0], nodes[~edge_mask, 2],
-                       c="gray", s=10, alpha=0.5, label="Surface")
+            ax2.scatter(nodes[~edge_mask, 1], nodes[~edge_mask, 2],
+                       c="gray", s=10, alpha=0.5, zorder=4, label="Surface nodes")
 
-    ax3.set_xlabel("X")
-    ax3.set_ylabel("Z")
-    ax3.set_xlim(-0.1, 1.1)
-    ax3.set_ylim(-0.1, 1.1)
-    ax3.set_aspect("equal")
-    ax3.set_title("Side View (XZ)")
-    ax3.legend(fontsize=8)
+    ax2.set_xlim(1, 0)  # Y axis: left = positive
+    ax2.set_ylim(0, 1)  # Z axis: up = positive
+    ax2.set_xlabel("Y (depth)")
+    ax2.set_ylabel("Z (height)")
+    ax2.set_aspect("equal")
+    ax2.set_title("GSRM-F 3D - Side View (YZ plane)")
+    ax2.legend(loc="upper left", fontsize=8)
 
-    plt.suptitle(
-        f"GSRM-F Floor and Wall: {final_state['n_nodes']} nodes, "
-        f"{final_state['n_faces']} faces, {final_state['n_edge_nodes']} edge nodes",
-        fontsize=12
-    )
     plt.tight_layout()
 
     png_path = output_dir / "floor_wall_final.png"
-    plt.savefig(str(png_path), dpi=150)
+    plt.savefig(str(png_path), dpi=150, bbox_inches="tight", facecolor="white")
     print(f"  Saved: {png_path}")
     plt.close()
 
