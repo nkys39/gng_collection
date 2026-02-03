@@ -495,46 +495,48 @@ class GSRM:
         """
         p = self.params
 
-        # Decay all errors
-        for node in self.nodes:
-            if node.id == -1:
-                continue
-            node.error *= (1 - p.beta)
-
-        # Find three nearest nodes
+        # Find three nearest nodes (Step 3)
         s1_id, s2_id, s3_id = self._find_three_nearest(sample)
 
         if s1_id == -1 or s2_id == -1 or s3_id == -1:
             return
 
-        # Extended CHL: create/reinforce edges and face
+        # Extended CHL: create/reinforce edges and face (Step 4)
         self._extended_chl(s1_id, s2_id, s3_id)
 
-        # Update winner error (squared distance)
+        # Update winner error (Step 5): ΔE_s1 = ||w_s1 - ξ||²
         dist_sq = np.sum((sample - self.nodes[s1_id].weight) ** 2)
         self.nodes[s1_id].error += dist_sq
 
-        # Move winner toward sample
+        # Move winner toward sample (Step 6)
         self.nodes[s1_id].weight += p.eps_b * (sample - self.nodes[s1_id].weight)
 
-        # Move neighbors toward sample and update edge ages
+        # Move neighbors toward sample (Step 6)
         for neighbor_id in list(self.edges_per_node.get(s1_id, set())):
             self.nodes[neighbor_id].weight += p.eps_n * (
                 sample - self.nodes[neighbor_id].weight
             )
-            # Increment edge age
+
+        # Update edge ages (Step 7): age = age + 1
+        for neighbor_id in list(self.edges_per_node.get(s1_id, set())):
             self.edges[s1_id, neighbor_id] += 1
             self.edges[neighbor_id, s1_id] += 1
 
-        # Remove invalid edges and faces
+        # Remove invalid edges and faces (Step 8)
         self._remove_invalid_edges_and_faces(s1_id)
 
-        # Periodically insert new node
+        # Periodically insert new node (Step 9)
         self._n_trial += 1
         if self._n_trial >= p.lambda_:
             self._n_trial = 0
             if self._addable_indices:
                 self._insert_node_gcs()
+
+        # Decay all errors (Step 10): ΔE_s = -βE_s
+        for node in self.nodes:
+            if node.id == -1:
+                continue
+            node.error *= (1 - p.beta)
 
         self.n_learning += 1
 
