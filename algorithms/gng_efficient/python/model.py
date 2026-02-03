@@ -38,7 +38,11 @@ class GNGEfficientParams:
         eps_b: Learning rate for the winner node.
         eps_n: Learning rate for neighbor nodes.
         alpha: Error decay rate when splitting.
-        beta: Global error decay rate (per step).
+        beta: Error decay FACTOR (close to 1.0, NOT a small rate!).
+              Paper formula: E = beta^(lambda-s) * E + v (Algorithm 4).
+              IMPORTANT: Standard GNG uses beta as a small decay RATE
+              (e.g., 0.005 meaning E *= 0.995), but this paper uses beta
+              as a decay FACTOR close to 1 (e.g., 0.9995). Do NOT confuse!
         max_age: Maximum edge age before removal.
 
     Optimization Parameters:

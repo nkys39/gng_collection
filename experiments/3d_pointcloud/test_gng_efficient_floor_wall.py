@@ -117,15 +117,16 @@ def run_experiment(
     points = sample_floor_and_wall(n_samples=n_samples, seed=seed)
     print(f"Sampled {len(points)} points")
 
-    # Setup GNG Efficient with parameters tuned for 3D
+    # Setup GNG Efficient with paper's Table 2 parameters (Fišer et al., 2013)
+    # Note: Paper's beta is a decay FACTOR (close to 1), not a decay RATE (close to 0)
     params = GNGEfficientParams(
         max_nodes=150,
-        lambda_=100,
-        eps_b=0.1,
-        eps_n=0.01,
-        alpha=0.5,
-        beta=0.005,
-        max_age=100,
+        lambda_=200,      # Paper default
+        eps_b=0.05,       # Paper default
+        eps_n=0.0006,     # Paper default
+        alpha=0.95,       # Paper default
+        beta=0.9995,      # Paper default (decay factor, NOT rate!)
+        max_age=200,      # Paper default
         # Optimization parameters
         use_uniform_grid=True,
         use_lazy_error=True,

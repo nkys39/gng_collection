@@ -132,13 +132,16 @@ def run_tracking_experiment(
     orbit_center = np.array(orbit_center)
 
     # Setup GNG Efficient with tracking-optimized parameters
+    # Note: Paper's beta is a decay FACTOR (close to 1), not a decay RATE (close to 0)
+    # For tracking: faster error decay needed, so beta slightly lower than paper default
+    # beta=0.99 over lambda=20 gives: 0.99^20 ≈ 0.82 decay per cycle
     params = GNGEfficientParams(
         max_nodes=50,
         lambda_=20,
         eps_b=0.15,
         eps_n=0.01,
         alpha=0.5,
-        beta=0.01,
+        beta=0.99,        # Paper-style decay factor (NOT rate!)
         max_age=30,
         # Optimization parameters
         use_uniform_grid=True,

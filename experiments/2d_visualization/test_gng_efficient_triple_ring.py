@@ -96,15 +96,17 @@ def run_experiment(
     print(f"Sampled {len(points)} points")
 
     # Setup GNG Efficient with parameters
-    # Using standard triple ring test parameters
+    # Using paper's Table 2 parameters (Fišer et al., 2013)
+    # Note: Paper's beta is close to 1 (decay factor),
+    # not small like standard GNG (decay rate)
     params = GNGEfficientParams(
         max_nodes=100,
-        lambda_=100,
-        eps_b=0.08,
-        eps_n=0.008,
-        alpha=0.5,
-        beta=0.005,
-        max_age=100,
+        lambda_=200,      # Paper default
+        eps_b=0.05,       # Paper default
+        eps_n=0.0006,     # Paper default
+        alpha=0.95,       # Paper default
+        beta=0.9995,      # Paper default (decay factor, NOT rate!)
+        max_age=200,      # Paper default
         # Optimization parameters
         use_uniform_grid=True,
         use_lazy_error=True,
