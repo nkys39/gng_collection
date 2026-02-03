@@ -19,6 +19,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | **DD-GNG** | GNG-U2 + 動的密度制御（注目領域で高密度ノード配置、strength機構） |
 | **AiS-GNG-DT** | GNG-DT + AiS-GNGの組み合わせ実験（複数トポロジー + Add-if-Silent + Utility管理） |
 | **GSRM** | GNG + 表面再構成（3勝者ECHL、三角形面生成、トポロジー学習） |
+| **GSRM-F** | GSRM + シャープエッジ検出・保持（PCA法線、適応学習率） |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
 
@@ -313,6 +314,21 @@ Extended Competitive Hebbian Learning（3勝者ECHL）で三角形面を直接�
 |:----:|:-------:|
 | ![Compare Sphere](experiments/gsrm_surface_reconstruction/samples/gsrm/python/compare_sphere.png) | ![Compare Torus](experiments/gsrm_surface_reconstruction/samples/gsrm/python/compare_torus.png) |
 
+### GSRM-F (Feature-Preserving GSRM)
+
+GSRMにシャープエッジ検出・保持機能を追加した拡張版。PCA法線計算でエッジを検出し、適応学習率でエッジを保持。
+
+**床と壁テスト（シャープエッジ検出）:**
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GSRM-F Growth](experiments/gsrm_surface_reconstruction/samples/gsrm_f/python/floor_wall_growth.gif) | ![GSRM-F Final](experiments/gsrm_surface_reconstruction/samples/gsrm_f/python/floor_wall_final.png) |
+
+**GSRM vs GSRM-F 比較:**
+
+![GSRM vs GSRM-F](experiments/gsrm_surface_reconstruction/samples/gsrm_f/python/compare_floor_wall.png)
+
+青色ノードがシャープエッジとして検出されたノード。床と壁の境界（90°の角）を正確に検出。
+
 ## 対応言語
 
 - Python
@@ -365,6 +381,7 @@ gng_collection/
 | DD-GNG      | ✓      | ✓   | Dynamic Density GNG - 動的密度制御（注目領域で高密度配置） |
 | AiS-GNG-DT  | ✓      | ✓   | GNG-DT + AiS-GNG 実験的組み合わせ（複数トポロジー + Add-if-Silent） |
 | GSRM        | ✓      | ✓   | Growing Self-Reconstruction Meshes - 3D表面再構成（ECHL、三角形面生成） |
+| GSRM-F      | ✓      | -   | Feature-Preserving GSRM - シャープエッジ検出・保持 |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
@@ -649,6 +666,42 @@ print(f"Nodes: {len(nodes)}, Faces: {len(faces)}")
 | GCS方式挿入 | ノード挿入時に面を分割 |
 | 面連動エッジ管理 | エッジ削除時に関連する面も削除 |
 | Hausdorff距離評価 | メッシュ品質の定量評価が可能 |
+
+### GSRM-F (Feature-Preserving GSRM)
+
+GSRMにシャープエッジ検出・保持機能を追加。PCA法線計算でエッジを検出。
+
+```python
+from algorithms.gsrm.python.model_feature import GSRMF, GSRMFParams
+
+params = GSRMFParams(
+    max_nodes=200,
+    lambda_=50,
+    eps_b=0.1,
+    eps_n=0.01,
+    max_age=100,
+    # Feature-preserving parameters
+    tau_normal=0.5,           # 法線類似度閾値（cos 60°）
+    edge_learning_factor=0.3, # エッジでの学習率係数
+    edge_insertion_bias=2.0,  # エッジ挿入バイアス
+)
+gsrmf = GSRMF(params=params)
+gsrmf.train(points_3d, n_iterations=10000)
+
+# 結果取得
+nodes, edges, faces = gsrmf.get_mesh()
+edge_positions = gsrmf.get_edge_nodes()  # シャープエッジ上のノード
+is_edge = gsrmf.get_is_edge()            # 各ノードのエッジフラグ
+print(f"Nodes: {gsrmf.n_nodes}, Edge nodes: {gsrmf.n_edge_nodes}")
+```
+
+**GSRM-Fの主な特徴：**
+| 機能 | 説明 |
+|------|------|
+| PCA法線計算 | 近傍点からPCAで法線ベクトルを自動計算 |
+| エッジ検出 | 法線内積が閾値未満のノードをエッジと判定 |
+| 適応学習率 | エッジノードでは学習率を下げてエッジを保持 |
+| エッジ優先挿入 | シャープエッジ上に優先的にノードを挿入 |
 
 ### SOM
 
