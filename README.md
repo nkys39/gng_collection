@@ -263,20 +263,23 @@ GNG-DTとAiS-GNGを組み合わせた実験的アルゴリズム。複数トポ�
 
 ### DD-GNG (Dynamic Density GNG)
 
-動的密度制御付きGNG。注目領域（Attention Region）を設定することで、その領域内のノード密度を高くできる。ノード強度（strength）に基づく学習率調整とノード挿入優先度制御。床と壁の境界部分に注目領域を設定。また、サーフェス分類（平面/エッジ/コーナー）に基づく**自動注目領域検出**もサポート（安定コーナーを自動検出）。
+動的密度制御付きGNG。注目領域（Attention Region）を設定することで、その領域内のノード密度を高くできる。ノード強度（strength）に基づく学習率調整とノード挿入優先度制御。
 
-**手動注目領域のみ:**
+**手動注目領域指定:**
+
+床と壁の境界部分にオレンジ枠で注目領域を手動設定。その領域内のノードに高い強度を付与。
+
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
 | ![DD-GNG Manual](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_growth.gif) | ![DD-GNG Manual Final](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_final.png) |
 
-**全機能版（手動 + 自動検出）:**
+**自動注目領域検出:**
 
-サーフェス分類で安定コーナーを自動検出し、注目領域として追加。緑=平面、黄=エッジ、赤=コーナー、△=自動検出ノード。
+サーフェス分類（PCAベース）で安定コーナーを自動検出し注目領域として設定。緑=平面、黄=エッジ、赤=コーナー、△=自動検出ノード。
 
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
-| ![DD-GNG Full](experiments/3d_pointcloud/samples/dd_gng/python/full_features_growth.gif) | ![DD-GNG Full Final](experiments/3d_pointcloud/samples/dd_gng/python/full_features_final.png) |
+| ![DD-GNG Auto](experiments/3d_pointcloud/samples/dd_gng/python/auto_detect_growth.gif) | ![DD-GNG Auto Final](experiments/3d_pointcloud/samples/dd_gng/python/auto_detect_final.png) |
 
 ### GCS
 
