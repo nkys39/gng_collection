@@ -122,6 +122,187 @@ def sample_triple_sphere(
     return np.vstack(all_points)
 
 
+def sample_sphere(
+    n_samples: int = 2000,
+    center: tuple[float, float, float] = (0.5, 0.5, 0.5),
+    radius: float = 0.4,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Sample points uniformly from a sphere surface.
+
+    Args:
+        n_samples: Number of points to sample.
+        center: Center of the sphere (x, y, z).
+        radius: Radius of the sphere.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Array of shape (n_samples, 3) with (x, y, z) coordinates.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Use Marsaglia's method for uniform sampling on sphere
+    points = []
+    while len(points) < n_samples:
+        # Generate random points in [-1, 1]^2
+        batch_size = n_samples * 2
+        x1 = np.random.uniform(-1, 1, batch_size)
+        x2 = np.random.uniform(-1, 1, batch_size)
+
+        # Keep points where x1^2 + x2^2 < 1
+        s = x1**2 + x2**2
+        mask = s < 1
+
+        x1 = x1[mask]
+        x2 = x2[mask]
+        s = s[mask]
+
+        # Convert to sphere coordinates
+        sqrt_term = np.sqrt(1 - s)
+        x = 2 * x1 * sqrt_term
+        y = 2 * x2 * sqrt_term
+        z = 1 - 2 * s
+
+        # Scale and translate
+        sphere_points = np.column_stack([
+            center[0] + radius * x,
+            center[1] + radius * y,
+            center[2] + radius * z,
+        ])
+
+        points.extend(sphere_points.tolist())
+
+    return np.array(points[:n_samples])
+
+
+def sample_torus(
+    n_samples: int = 2000,
+    center: tuple[float, float, float] = (0.5, 0.5, 0.5),
+    major_radius: float = 0.3,
+    minor_radius: float = 0.1,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Sample points uniformly from a torus surface.
+
+    Args:
+        n_samples: Number of points to sample.
+        center: Center of the torus (x, y, z).
+        major_radius: Distance from center of torus to center of tube.
+        minor_radius: Radius of the tube.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Array of shape (n_samples, 3) with (x, y, z) coordinates.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # For uniform sampling, we need to account for varying circumference
+    # Use rejection sampling based on circumference
+
+    points = []
+    while len(points) < n_samples:
+        batch_size = n_samples * 2
+
+        # Angle around the torus (main circle)
+        u = np.random.uniform(0, 2 * np.pi, batch_size)
+        # Angle around the tube
+        v = np.random.uniform(0, 2 * np.pi, batch_size)
+
+        # Rejection sampling: probability proportional to (R + r*cos(v))
+        # where R is major radius, r is minor radius
+        acceptance_prob = (major_radius + minor_radius * np.cos(v)) / (
+            major_radius + minor_radius
+        )
+        accept = np.random.random(batch_size) < acceptance_prob
+
+        u = u[accept]
+        v = v[accept]
+
+        # Parametric equations for torus
+        x = (major_radius + minor_radius * np.cos(v)) * np.cos(u)
+        y = (major_radius + minor_radius * np.cos(v)) * np.sin(u)
+        z = minor_radius * np.sin(v)
+
+        # Translate to center
+        torus_points = np.column_stack([
+            center[0] + x,
+            center[1] + y,
+            center[2] + z,
+        ])
+
+        points.extend(torus_points.tolist())
+
+    return np.array(points[:n_samples])
+
+
+def sample_cylinder(
+    n_samples: int = 2000,
+    center: tuple[float, float, float] = (0.5, 0.5, 0.5),
+    radius: float = 0.2,
+    height: float = 0.6,
+    include_caps: bool = True,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Sample points from a cylinder surface.
+
+    Args:
+        n_samples: Number of points to sample.
+        center: Center of the cylinder (x, y, z).
+        radius: Radius of the cylinder.
+        height: Height of the cylinder (along z-axis).
+        include_caps: Whether to include top and bottom caps.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Array of shape (n_samples, 3) with (x, y, z) coordinates.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Calculate areas
+    side_area = 2 * np.pi * radius * height
+    cap_area = np.pi * radius**2 if include_caps else 0
+    total_area = side_area + 2 * cap_area
+
+    # Number of samples for each part
+    n_side = int(n_samples * side_area / total_area)
+    n_cap = (n_samples - n_side) // 2 if include_caps else 0
+    n_side = n_samples - 2 * n_cap  # Adjust for rounding
+
+    all_points = []
+
+    # Side surface
+    theta = np.random.uniform(0, 2 * np.pi, n_side)
+    z = np.random.uniform(-height / 2, height / 2, n_side)
+    x = radius * np.cos(theta)
+    y = radius * np.sin(theta)
+    side_points = np.column_stack([
+        center[0] + x,
+        center[1] + y,
+        center[2] + z,
+    ])
+    all_points.append(side_points)
+
+    # Caps (if included)
+    if include_caps and n_cap > 0:
+        for z_offset in [-height / 2, height / 2]:
+            # Sample uniformly on disk
+            r = radius * np.sqrt(np.random.random(n_cap))
+            theta = np.random.uniform(0, 2 * np.pi, n_cap)
+            x = r * np.cos(theta)
+            y = r * np.sin(theta)
+            cap_points = np.column_stack([
+                center[0] + x,
+                center[1] + y,
+                np.full(n_cap, center[2] + z_offset),
+            ])
+            all_points.append(cap_points)
+
+    return np.vstack(all_points)
+
+
 def save_points(points: np.ndarray, output_path: str) -> None:
     """Save points to file (.npy or .csv).
 
