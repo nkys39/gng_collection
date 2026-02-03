@@ -685,15 +685,16 @@ private:
     }
 
     void add_edge(int node1, int node2) {
-        if (edges(node1, node2) > 0) {
-            edges(node1, node2) = 1;
-            edges(node2, node1) = 1;
-        } else {
+        // Per Algorithm 3, step 6: A_ν,μ ← 0
+        // Edge age is set to 0 here, then incremented in the neighbor loop.
+        if (edges(node1, node2) == 0) {
+            // New edge
             edges_per_node[node1].insert(node2);
             edges_per_node[node2].insert(node1);
-            edges(node1, node2) = 1;
-            edges(node2, node1) = 1;
         }
+        // Reset age to 0 (will be incremented to 1 in the neighbor loop)
+        edges(node1, node2) = 0;
+        edges(node2, node1) = 0;
     }
 
     void remove_edge(int node1, int node2) {

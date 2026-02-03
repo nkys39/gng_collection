@@ -224,15 +224,18 @@ class GNGEfficient:
         self._addable_indices.append(node_id)
 
     def _add_edge(self, node1: int, node2: int) -> None:
-        """Add or reset edge between two nodes."""
-        if self.edges[node1, node2] > 0:
-            self.edges[node1, node2] = 1
-            self.edges[node2, node1] = 1
-        else:
+        """Add or reset edge between two nodes.
+
+        Per Algorithm 3, step 6: A_ν,μ ← 0
+        The edge age is set to 0 here, then incremented in the neighbor loop.
+        """
+        if self.edges[node1, node2] == 0:
+            # New edge
             self.edges_per_node[node1].add(node2)
             self.edges_per_node[node2].add(node1)
-            self.edges[node1, node2] = 1
-            self.edges[node2, node1] = 1
+        # Reset age to 0 (will be incremented to 1 in the neighbor loop)
+        self.edges[node1, node2] = 0
+        self.edges[node2, node1] = 0
 
     def _remove_edge(self, node1: int, node2: int) -> None:
         """Remove edge between two nodes."""
@@ -509,6 +512,9 @@ class GNGEfficient:
         n_samples = len(data)
 
         for _ in range(n_iterations):
+            # Update step counter (s in Algorithm 3)
+            self.step = self.n_learning % self.params.lambda_
+
             idx = self.rng.integers(0, n_samples)
             self._adapt(data[idx])
 
@@ -533,6 +539,9 @@ class GNGEfficient:
         Returns:
             self for chaining.
         """
+        # Update step counter (s in Algorithm 3)
+        self.step = self.n_learning % self.params.lambda_
+
         self._adapt(sample)
         self.n_learning += 1
 
