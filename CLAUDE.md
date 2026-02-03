@@ -15,6 +15,7 @@ gng_collection/
 │   ├── gng_t/            # GNG-T (Triangulation - Kubota 2008)
 │   ├── gng_d/            # GNG-D (explicit Delaunay)
 │   ├── gng_dt/           # GNG-DT (Different Topologies - 3D点群用)
+│   ├── dd_gng/           # DD-GNG (Dynamic Density GNG)
 │   ├── som/              # Self-Organizing Map
 │   ├── neural_gas/       # Neural Gas
 │   ├── gcs/              # Growing Cell Structures
@@ -237,6 +238,7 @@ git add -f experiments/2d_visualization/samples/
 | GNG-T (Kubota)| ✓    | -   | Kubotalab論文完全準拠版（γ式使用） |
 | GNG-D       | ✓      | -   | 明示的Delaunay三角形分割（scipy.spatial） |
 | GNG-DT      | ✓      | ✓   | 複数トポロジー学習（位置/色/法線、3D点群用、ロボット版含む） |
+| DD-GNG      | ✓      | ✓   | Dynamic Density GNG（動的密度制御、注目領域で高密度配置） |
 | SOM         | ✓      | ✓   | Self-Organizing Map |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures |
@@ -298,6 +300,7 @@ python test_gg_triple_ring.py
 cd experiments/3d_pointcloud
 python test_gng_floor_wall.py
 python test_gngdt_floor_wall.py
+python test_ddgng_floor_wall.py
 
 # C++ビルド
 cd experiments/2d_visualization/cpp
