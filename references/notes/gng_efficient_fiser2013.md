@@ -1,4 +1,6 @@
-# GNG Efficiently (Fišer et al., 2013) 再現実装計画
+# GNG Efficiently (Fišer et al., 2013) 再現実装ノート
+
+**実装状況**: ✅ 完了（Python/C++）
 
 ## 論文情報
 
@@ -448,7 +450,70 @@ self.beta_powers = np.array([
 
 ---
 
-## 8. 参考文献
+## 8. 実装詳細ノート（論文準拠ポイント）
+
+実装時に確認した論文準拠の重要ポイント：
+
+### 8.1 Uniform Grid の初期化（Section 4.2）
+
+論文の記述：
+> "The growing uniform grid starts with a single cell encapsulating an axis aligned bounding box of the input signals."
+
+**実装**: `train()`の開始時に入力データの最小/最大座標を計算し、その境界ボックスで単一セルのグリッドを初期化。
+
+```python
+# model.py - train()
+min_coords = np.min(data, axis=0)
+max_coords = np.max(data, axis=0)
+self._grid.initialize_with_bounds(min_coords, max_coords)
+```
+
+### 8.2 エッジ年齢の初期化（Algorithm 3, Step 6）
+
+論文の記述：
+> "A_ν,μ ← 0"
+
+その後、Step 8で全ての隣接エッジ年齢をインクリメント：
+> "A_n,ν ← A_n,ν + 1"
+
+**実装**: `_add_edge()`でエッジ年齢を0に設定。これにより新規作成エッジは隣接ループ後に1になる。
+
+```python
+def _add_edge(self, node1: int, node2: int) -> None:
+    """Per Algorithm 3, step 6: A_ν,μ ← 0"""
+    # Reset age to 0 (will be incremented to 1 in the neighbor loop)
+    self.edges[node1, node2] = 0
+    self.edges[node2, node1] = 0
+```
+
+### 8.3 ステップカウンタの追跡（Algorithm 4）
+
+`inc_error*(c, s, ν, v)`には現在のステップ`s`が必要（`β^(λ-s)`の計算用）。
+
+**実装**: `adapt()`の開始時に`step = n_learning % lambda`を計算。
+
+```python
+def adapt(self, input_signal: np.ndarray) -> None:
+    self.step = self.n_learning % self.params.lambda_
+    # ... inc_error uses self.step for β^(λ-s)
+```
+
+### 8.4 β^i の事前計算（Algorithm 4 コメント）
+
+論文の記述：
+> "Note that all powers of β can be pre-computed into an array and the expensive processor operation can be avoided."
+
+**実装**: 初期化時に`β^0`から`β^λ`まで事前計算。
+
+```python
+self._beta_powers = np.array([
+    self.params.beta ** i for i in range(self.params.lambda_ + 1)
+])
+```
+
+---
+
+## 9. 参考文献
 
 - [1] B. Fritzke, "A growing neural gas network learns topologies," NIPS 1995
 - [26] M. L. Fredman et al., "The pairing heap," Algorithmica 1986
