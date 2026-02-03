@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -129,6 +130,20 @@ inline void save_frames(
     file << "iteration\n";
     for (int f : frames) {
         file << f << "\n";
+    }
+}
+
+/**
+ * @brief Save triangular faces to CSV
+ */
+inline void save_faces(
+    const std::vector<std::array<int, 3>>& faces,
+    const std::string& path
+) {
+    std::ofstream file(path);
+    file << "i,j,k\n";
+    for (const auto& face : faces) {
+        file << face[0] << "," << face[1] << "," << face[2] << "\n";
     }
 }
 
@@ -264,6 +279,26 @@ void save_gngdt_robot_graph_3d(
     save_normals(normals, output_dir + "/normals_" + iter_str + ".csv");
     save_traversability(traversability, output_dir + "/traversability_" + iter_str + ".csv");
     save_contour(contour, output_dir + "/contour_" + iter_str + ".csv");
+}
+
+/**
+ * @brief Helper for saving GSRM mesh state (nodes, edges, faces)
+ */
+template<typename Model>
+void save_gsrm_mesh_3d(
+    const Model& model,
+    const std::string& output_dir,
+    int iteration
+) {
+    std::vector<Eigen::Vector3f> nodes;
+    std::vector<std::pair<int, int>> edges;
+    std::vector<std::array<int, 3>> faces;
+    model.get_mesh(nodes, edges, faces);
+
+    std::string iter_str = format_iteration(iteration);
+    save_nodes_3d(nodes, output_dir + "/nodes_" + iter_str + ".csv");
+    save_edges(edges, output_dir + "/edges_" + iter_str + ".csv");
+    save_faces(faces, output_dir + "/faces_" + iter_str + ".csv");
 }
 
 }  // namespace csv_writer

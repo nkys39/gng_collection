@@ -131,4 +131,87 @@ inline std::vector<Eigen::Vector3f> sample_triple_sphere(
     return points;
 }
 
+/**
+ * @brief Sample points uniformly on a sphere surface
+ *
+ * @param n_samples Number of points to sample
+ * @param radius Sphere radius
+ * @param center_x X coordinate of center
+ * @param center_y Y coordinate of center
+ * @param center_z Z coordinate of center
+ * @param seed Random seed
+ * @return Vector of 3D points
+ */
+inline std::vector<Eigen::Vector3f> sample_sphere(
+    int n_samples,
+    float radius = 0.35f,
+    float center_x = 0.5f,
+    float center_y = 0.5f,
+    float center_z = 0.5f,
+    unsigned int seed = 42
+) {
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+
+    std::vector<Eigen::Vector3f> points;
+    points.reserve(n_samples);
+
+    for (int i = 0; i < n_samples; ++i) {
+        // Use spherical coordinates with uniform distribution on sphere
+        float theta = 2.0f * M_PI * uniform(rng);  // azimuthal angle
+        float phi = std::acos(2.0f * uniform(rng) - 1.0f);  // polar angle
+
+        float x = center_x + radius * std::sin(phi) * std::cos(theta);
+        float y = center_y + radius * std::sin(phi) * std::sin(theta);
+        float z = center_z + radius * std::cos(phi);
+
+        points.emplace_back(x, y, z);
+    }
+
+    return points;
+}
+
+/**
+ * @brief Sample points uniformly on a torus surface
+ *
+ * @param n_samples Number of points to sample
+ * @param major_radius Distance from center of tube to center of torus
+ * @param minor_radius Radius of the tube
+ * @param center_x X coordinate of center
+ * @param center_y Y coordinate of center
+ * @param center_z Z coordinate of center
+ * @param seed Random seed
+ * @return Vector of 3D points
+ */
+inline std::vector<Eigen::Vector3f> sample_torus(
+    int n_samples,
+    float major_radius = 0.3f,
+    float minor_radius = 0.12f,
+    float center_x = 0.5f,
+    float center_y = 0.5f,
+    float center_z = 0.5f,
+    unsigned int seed = 42
+) {
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+
+    std::vector<Eigen::Vector3f> points;
+    points.reserve(n_samples);
+
+    for (int i = 0; i < n_samples; ++i) {
+        // Parametric torus: two angles
+        float u = 2.0f * M_PI * uniform(rng);  // angle around torus
+        float v = 2.0f * M_PI * uniform(rng);  // angle around tube
+
+        // Torus parameterization
+        float x = center_x + (major_radius + minor_radius * std::cos(v)) * std::cos(u);
+        float y = center_y + (major_radius + minor_radius * std::cos(v)) * std::sin(u);
+        float z = center_z + minor_radius * std::sin(v);
+
+        points.emplace_back(x, y, z);
+    }
+
+    return points;
+}
+
 }  // namespace sampler_3d
