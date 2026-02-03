@@ -265,10 +265,18 @@ GNG-DTとAiS-GNGを組み合わせた実験的アルゴリズム。複数トポ�
 
 動的密度制御付きGNG。注目領域（Attention Region）を設定することで、その領域内のノード密度を高くできる。ノード強度（strength）に基づく学習率調整とノード挿入優先度制御。床と壁の境界部分に注目領域を設定。また、サーフェス分類（平面/エッジ/コーナー）に基づく**自動注目領域検出**もサポート（安定コーナーを自動検出）。
 
-**Python実装:**
+**手動注目領域のみ:**
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
-| ![DD-GNG 3D](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_growth.gif) | ![DD-GNG 3D Final](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_final.png) |
+| ![DD-GNG Manual](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_growth.gif) | ![DD-GNG Manual Final](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_final.png) |
+
+**全機能版（手動 + 自動検出）:**
+
+サーフェス分類で安定コーナーを自動検出し、注目領域として追加。緑=平面、黄=エッジ、赤=コーナー、△=自動検出ノード。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![DD-GNG Full](experiments/3d_pointcloud/samples/dd_gng/python/full_features_growth.gif) | ![DD-GNG Full Final](experiments/3d_pointcloud/samples/dd_gng/python/full_features_final.png) |
 
 ### GCS
 
