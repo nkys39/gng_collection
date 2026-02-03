@@ -11,18 +11,45 @@ DD-GNG extends GNG-U with dynamic density control:
     2. Strength-weighted node insertion: error * strength^4 for priority
     3. Strength-weighted learning: (1/strength) * eps_b for stability
     4. Dynamic sampling: Optional priority sampling from attention regions
+    5. Automatic attention detection: Stable corners detected via surface
+       classification are automatically treated as attention regions
 
 This enables higher node density in regions of interest (e.g., obstacles,
 object details) while maintaining lower density in safe/uninteresting areas.
+
+Surface Classification (from reference implementation):
+    - PLANE (0): Node on a flat surface (smallest eigenvalue very small)
+    - EDGE (1): Node on an edge between surfaces
+    - CORNER (2): Node at a corner (all eigenvalues similar)
+    - STABLE_PLANE (4): Plane stable for > stability_threshold iterations
+    - STABLE_EDGE (5): Edge stable for > stability_threshold iterations
+    - STABLE_CORNER (6): Corner stable for > stability_threshold iterations
+                         (automatically added to attention regions)
 """
 
 from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import Callable
 
 import numpy as np
+
+
+class SurfaceType(IntEnum):
+    """Surface classification types from reference implementation.
+
+    Based on calc_node_normal_vector() in gng.cpp.
+    """
+
+    UNKNOWN = 3  # Not yet classified
+    PLANE = 0  # Flat surface
+    EDGE = 1  # Edge between surfaces
+    CORNER = 2  # Corner point
+    STABLE_PLANE = 4  # Plane stable for > stability_threshold
+    STABLE_EDGE = 5  # Edge stable for > stability_threshold
+    STABLE_CORNER = 6  # Corner stable for > stability_threshold (auto attention)
 
 
 @dataclass
@@ -46,6 +73,19 @@ class DDGNGParams:
         strength_scale: Scale factor for strength in weighted error (default: 4.0).
         use_strength_learning: Apply strength to learning rate (default: True).
         use_strength_insertion: Apply strength to node insertion (default: True).
+        auto_detect_attention: Enable automatic attention region detection based
+            on surface classification (default: False for backward compatibility).
+        stability_threshold: Number of iterations a node must maintain its
+            surface type to be considered stable (default: 16, from reference).
+        plane_stability_threshold: Stability threshold for planes (default: 8).
+        corner_strength: Strength bonus for auto-detected stable corners
+            (default: 5.0, reference uses 20).
+        plane_ev_ratio: Eigenvalue ratio threshold for plane classification.
+            If smallest_ev / largest_ev < ratio, classify as plane (default: 0.01).
+        edge_ev_ratio: Eigenvalue ratio threshold for edge classification.
+            If middle_ev / largest_ev < ratio, classify as edge (default: 0.1).
+        surface_update_interval: How often to update surface classification
+            (default: 10, every 10 iterations).
     """
 
     max_nodes: int = 100
@@ -63,6 +103,14 @@ class DDGNGParams:
     strength_scale: float = 4.0  # Scale factor for strength
     use_strength_learning: bool = True  # Apply strength to learning rate
     use_strength_insertion: bool = True  # Apply strength to node insertion
+    # Auto-detection parameters (from reference implementation)
+    auto_detect_attention: bool = False  # Enable automatic detection
+    stability_threshold: int = 16  # Iterations for corner/edge stability
+    plane_stability_threshold: int = 8  # Iterations for plane stability
+    corner_strength: float = 5.0  # Strength for auto-detected corners
+    plane_ev_ratio: float = 0.01  # Eigenvalue ratio for plane
+    edge_ev_ratio: float = 0.1  # Eigenvalue ratio for edge
+    surface_update_interval: int = 10  # Surface classification update interval
 
 
 @dataclass
@@ -94,6 +142,10 @@ class NeuronNode:
         error: Accumulated error (E).
         utility: Utility measure (U).
         strength: Node strength for dynamic density control (δ).
+        normal: Normal vector at this node (computed via PCA).
+        surface_type: Surface classification (plane/edge/corner).
+        stability_age: How long node has maintained current surface type.
+        auto_attention: Whether this node is auto-detected as attention region.
     """
 
     id: int = -1
@@ -101,6 +153,10 @@ class NeuronNode:
     error: float = 1.0
     utility: float = 0.0
     strength: float = 1.0
+    normal: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 1.0]))
+    surface_type: int = SurfaceType.UNKNOWN
+    stability_age: int = 0
+    auto_attention: bool = False
 
 
 class DynamicDensityGNG:
@@ -113,31 +169,47 @@ class DynamicDensityGNG:
     - More stable positioning through strength-weighted learning
 
     Key features:
-    1. Attention regions: Define regions where higher node density is desired
-    2. Node strength: δ = 1 + sum(strength_bonus for containing regions)
-    3. Weighted insertion: priority = error * (scale * strength)^power
-    4. Weighted learning: effective_eps_b = eps_b / strength
+    1. Manual attention regions: Define regions where higher node density is desired
+    2. Automatic attention detection: Stable corners detected via surface
+       classification are automatically treated as attention regions
+    3. Node strength: δ = 1 + sum(strength_bonus for containing regions)
+       + corner_strength (if auto_attention)
+    4. Weighted insertion: priority = error * (scale * strength)^power
+    5. Weighted learning: effective_eps_b = eps_b / strength
+
+    Surface Classification (3D only, requires n_dim >= 3):
+    - Computes normal vectors via PCA on node + neighbors
+    - Classifies nodes as plane/edge/corner based on eigenvalue ratios
+    - Tracks stability over time (how long node maintains same classification)
+    - Stable corners (stability_age > threshold) automatically become attention
 
     Attributes:
         params: DD-GNG hyperparameters.
         nodes: List of neuron nodes.
         edges: Edge age matrix.
         edges_per_node: Adjacency list for quick neighbor lookup.
-        attention_regions: List of attention regions for density control.
+        attention_regions: List of manual attention regions.
         n_learning: Total number of learning iterations.
         n_removals: Number of nodes removed by utility criterion.
+        n_auto_attention: Number of auto-detected attention nodes.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from model import DynamicDensityGNG, DDGNGParams, AttentionRegion
+    >>> from model import DynamicDensityGNG, DDGNGParams
+    >>> # Manual attention region (2D/3D)
     >>> X = np.random.rand(1000, 2)
     >>> params = DDGNGParams(max_nodes=100)
     >>> gng = DynamicDensityGNG(n_dim=2, params=params)
-    >>> # Add attention region in upper-right corner
     >>> gng.add_attention_region(center=[0.75, 0.75], size=[0.25, 0.25], strength=5.0)
     >>> gng.train(X, n_iterations=5000)
-    >>> nodes, edges = gng.get_graph()
+    >>>
+    >>> # Automatic attention detection (3D)
+    >>> X3d = np.random.rand(1000, 3)
+    >>> params = DDGNGParams(max_nodes=100, auto_detect_attention=True)
+    >>> gng3d = DynamicDensityGNG(n_dim=3, params=params)
+    >>> gng3d.train(X3d, n_iterations=5000)
+    >>> # Stable corners are automatically detected as attention regions
     """
 
     def __init__(
@@ -176,6 +248,7 @@ class DynamicDensityGNG:
         self.n_learning = 0
         self._n_trial = 0
         self.n_removals = 0
+        self.n_auto_attention = 0
 
         # Initialize with 2 random nodes
         self._init_nodes()
@@ -213,37 +286,255 @@ class DynamicDensityGNG:
         """Remove all attention regions."""
         self.attention_regions.clear()
 
-    def _calculate_strength(self, position: np.ndarray) -> float:
+    def _calculate_strength(
+        self, position: np.ndarray, auto_attention: bool = False
+    ) -> float:
         """Calculate node strength based on position and attention regions.
 
         Strength formula (from paper Algorithm 2):
             δ = 1 + sum(strength_bonus for each containing region)
+            + corner_strength (if auto_attention is True)
 
         Args:
             position: Node position.
+            auto_attention: Whether this node is auto-detected as attention.
 
         Returns:
             Strength value (δ >= 1.0).
         """
+        p = self.params
         strength = 1.0
+
+        # Manual attention regions
         for region in self.attention_regions:
             if region.contains(position):
                 strength += region.strength_bonus
+
+        # Auto-detected attention (stable corners)
+        if auto_attention:
+            strength += p.corner_strength
+
         return strength
 
     def _update_node_strength(self, node_id: int) -> None:
         """Update strength for a node based on its current position."""
         if self.nodes[node_id].id == -1:
             return
-        self.nodes[node_id].strength = self._calculate_strength(
-            self.nodes[node_id].weight
-        )
+        node = self.nodes[node_id]
+        node.strength = self._calculate_strength(node.weight, node.auto_attention)
 
     def _update_all_strengths(self) -> None:
         """Update strength values for all active nodes."""
         for node in self.nodes:
             if node.id != -1:
-                node.strength = self._calculate_strength(node.weight)
+                node.strength = self._calculate_strength(
+                    node.weight, node.auto_attention
+                )
+
+    # =========================================================================
+    # Surface Classification (Auto-detection feature)
+    # =========================================================================
+
+    def _compute_normal_pca(self, node_id: int) -> tuple[np.ndarray, np.ndarray]:
+        """Compute normal vector via PCA on node + neighbor positions.
+
+        Based on calc_node_normal_vector() in reference gng.cpp.
+        Uses eigenvalue decomposition of covariance matrix:
+        - Smallest eigenvalue direction = normal vector
+        - Eigenvalue ratios used for surface classification
+
+        Args:
+            node_id: Node ID to compute normal for.
+
+        Returns:
+            Tuple of (normal_vector, eigenvalues_sorted).
+            normal_vector: Unit normal vector (or [0,0,1] default).
+            eigenvalues_sorted: Eigenvalues sorted ascending [λ1, λ2, λ3].
+        """
+        node = self.nodes[node_id]
+        default_normal = np.zeros(self.n_dim)
+        if self.n_dim >= 3:
+            default_normal[2] = 1.0  # Default Z-up normal
+        else:
+            default_normal[-1] = 1.0
+
+        # Collect positions: this node + all neighbors
+        positions = [node.weight.copy()]
+        for neighbor_id in self.edges_per_node.get(node_id, set()):
+            if self.nodes[neighbor_id].id != -1:
+                positions.append(self.nodes[neighbor_id].weight.copy())
+
+        if len(positions) < 3:
+            # Need at least 3 points for meaningful PCA
+            return default_normal, np.ones(self.n_dim)
+
+        positions_arr = np.array(positions)
+
+        # Compute centroid
+        centroid = np.mean(positions_arr, axis=0)
+
+        # Compute covariance matrix
+        centered = positions_arr - centroid
+        cov = np.dot(centered.T, centered) / len(positions)
+
+        try:
+            # Eigenvalue decomposition
+            eigenvalues, eigenvectors = np.linalg.eigh(cov)
+
+            # eigenvalues are sorted ascending by eigh
+            # Smallest eigenvalue = normal direction
+            normal = eigenvectors[:, 0].copy()
+
+            # Ensure consistent orientation (reference: if y < 0, flip)
+            if self.n_dim >= 2 and normal[1] < 0:
+                normal = -normal
+
+            # Normalize
+            norm = np.linalg.norm(normal)
+            if norm > 1e-10:
+                normal = normal / norm
+            else:
+                normal = default_normal
+
+            return normal, eigenvalues
+
+        except np.linalg.LinAlgError:
+            return default_normal, np.ones(self.n_dim)
+
+    def _classify_surface_type(self, eigenvalues: np.ndarray) -> int:
+        """Classify surface type based on eigenvalue ratios.
+
+        Based on reference implementation calc_node_normal_vector():
+        - Plane: Smallest eigenvalue << others (flat surface)
+        - Edge: Two large eigenvalues, one small (linear feature)
+        - Corner: All eigenvalues similar (3D point)
+
+        Args:
+            eigenvalues: Eigenvalues sorted ascending [λ1, λ2, λ3].
+
+        Returns:
+            SurfaceType value (PLANE, EDGE, or CORNER).
+        """
+        p = self.params
+
+        # Need at least 3D for proper classification
+        if len(eigenvalues) < 3:
+            return SurfaceType.CORNER  # 2D points are all "corners"
+
+        # Avoid division by zero
+        max_ev = max(eigenvalues[-1], 1e-10)
+
+        # Ratios: how small are the eigenvalues relative to the largest
+        ratio_small = eigenvalues[0] / max_ev  # smallest / largest
+        ratio_mid = eigenvalues[1] / max_ev  # middle / largest
+
+        if ratio_small < p.plane_ev_ratio:
+            # Smallest eigenvalue is very small -> PLANE
+            return SurfaceType.PLANE
+        elif ratio_mid < p.edge_ev_ratio:
+            # Middle eigenvalue is small -> EDGE (linear feature)
+            return SurfaceType.EDGE
+        else:
+            # All eigenvalues similar -> CORNER
+            return SurfaceType.CORNER
+
+    def _update_surface_classification(self, node_id: int) -> None:
+        """Update surface classification for a single node.
+
+        Based on reference calc_node_normal_vector() logic:
+        1. Compute normal via PCA
+        2. Classify as plane/edge/corner
+        3. Track stability (how long same classification maintained)
+        4. Promote to stable variant after threshold iterations
+        5. Auto-detect attention for stable corners
+
+        Args:
+            node_id: Node ID to update.
+        """
+        p = self.params
+        node = self.nodes[node_id]
+
+        if node.id == -1:
+            return
+
+        # Remember previous classification
+        last_type = node.surface_type
+
+        # Compute normal and classify
+        normal, eigenvalues = self._compute_normal_pca(node_id)
+        node.normal = normal
+        new_type = self._classify_surface_type(eigenvalues)
+
+        # Update stability tracking (from reference gng.cpp:523-548)
+        if last_type == SurfaceType.STABLE_CORNER and new_type != SurfaceType.CORNER:
+            # Was stable corner, now not a corner -> revert to corner, decrement age
+            node.surface_type = SurfaceType.CORNER
+            node.stability_age = max(0, node.stability_age - 1)
+            # Lost auto-attention status
+            if node.auto_attention:
+                node.auto_attention = False
+                self.n_auto_attention -= 1
+
+        elif new_type != last_type and last_type in (
+            SurfaceType.PLANE,
+            SurfaceType.EDGE,
+            SurfaceType.CORNER,
+            SurfaceType.UNKNOWN,
+        ):
+            # Classification changed -> reset age
+            node.surface_type = new_type
+            node.stability_age = 0
+
+        elif new_type in (SurfaceType.PLANE, SurfaceType.EDGE, SurfaceType.CORNER):
+            # Same classification -> increment age
+            node.surface_type = new_type
+            node.stability_age = min(25, node.stability_age + 1)
+
+            # Check for promotion to stable variant
+            if (
+                new_type == SurfaceType.PLANE
+                and node.stability_age > p.plane_stability_threshold
+            ):
+                node.surface_type = SurfaceType.STABLE_PLANE
+
+            elif (
+                new_type == SurfaceType.EDGE
+                and node.stability_age > p.stability_threshold
+            ):
+                node.surface_type = SurfaceType.STABLE_EDGE
+
+            elif (
+                new_type == SurfaceType.CORNER
+                and node.stability_age > p.stability_threshold
+            ):
+                # Promote to stable corner -> AUTO ATTENTION!
+                node.surface_type = SurfaceType.STABLE_CORNER
+                if not node.auto_attention:
+                    node.auto_attention = True
+                    self.n_auto_attention += 1
+
+        else:
+            # Already stable -> just decrement age slightly
+            node.stability_age = max(0, node.stability_age - 1)
+
+    def _update_all_surface_classifications(self) -> None:
+        """Update surface classifications for all active nodes.
+
+        Should be called periodically (every surface_update_interval iterations).
+        """
+        if not self.params.auto_detect_attention:
+            return
+
+        if self.n_dim < 3:
+            # Surface classification requires 3D
+            return
+
+        for node in self.nodes:
+            if node.id != -1:
+                self._update_surface_classification(node.id)
+
+        # Update strengths after classification changes
+        self._update_all_strengths()
 
     def _add_node(
         self,
@@ -288,6 +579,10 @@ class DynamicDensityGNG:
         """
         if not force and self.edges_per_node.get(node_id):
             return False  # Has edges, don't remove
+
+        # Track auto-attention removal
+        if self.nodes[node_id].auto_attention:
+            self.n_auto_attention -= 1
 
         # Remove all edges connected to this node
         for neighbor_id in list(self.edges_per_node.get(node_id, set())):
@@ -466,6 +761,14 @@ class DynamicDensityGNG:
         if self._n_trial >= p.lambda_:
             self._n_trial = 0
             self._insert_node_with_density()
+
+        # Auto-detection: Update surface classifications periodically
+        if (
+            p.auto_detect_attention
+            and self.n_learning > 0
+            and self.n_learning % p.surface_update_interval == 0
+        ):
+            self._update_all_surface_classifications()
 
         self.n_learning += 1
 
@@ -727,6 +1030,57 @@ class DynamicDensityGNG:
             Array of error values in same order as get_graph() nodes.
         """
         return np.array([node.error for node in self.nodes if node.id != -1])
+
+    def get_node_normals(self) -> np.ndarray:
+        """Get normal vectors for active nodes.
+
+        Returns:
+            Array of normal vectors in same order as get_graph() nodes.
+            Shape: (n_nodes, n_dim).
+        """
+        normals = [node.normal for node in self.nodes if node.id != -1]
+        if not normals:
+            return np.array([]).reshape(0, self.n_dim)
+        return np.array(normals)
+
+    def get_node_surface_types(self) -> np.ndarray:
+        """Get surface type classifications for active nodes.
+
+        Returns:
+            Array of SurfaceType values in same order as get_graph() nodes.
+            Values: 0=PLANE, 1=EDGE, 2=CORNER, 3=UNKNOWN,
+                   4=STABLE_PLANE, 5=STABLE_EDGE, 6=STABLE_CORNER
+        """
+        return np.array(
+            [node.surface_type for node in self.nodes if node.id != -1],
+            dtype=np.int32,
+        )
+
+    def get_node_auto_attention(self) -> np.ndarray:
+        """Get auto-attention status for active nodes.
+
+        Returns:
+            Boolean array indicating which nodes are auto-detected attention.
+        """
+        return np.array(
+            [node.auto_attention for node in self.nodes if node.id != -1],
+            dtype=bool,
+        )
+
+    def get_auto_attention_nodes(self) -> np.ndarray:
+        """Get positions of auto-detected attention nodes (stable corners).
+
+        Returns:
+            Array of positions for auto-attention nodes.
+            Shape: (n_auto_attention, n_dim).
+        """
+        positions = [
+            node.weight for node in self.nodes
+            if node.id != -1 and node.auto_attention
+        ]
+        if not positions:
+            return np.array([]).reshape(0, self.n_dim)
+        return np.array(positions)
 
 
 # Aliases

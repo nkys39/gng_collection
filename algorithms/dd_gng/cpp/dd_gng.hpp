@@ -11,6 +11,17 @@
  * 1. Node strength: Nodes in attention regions have higher strength values
  * 2. Strength-weighted node insertion: error * (scale * strength)^power for priority
  * 3. Strength-weighted learning: eps_b / strength for stability
+ * 4. Automatic attention detection: Stable corners detected via surface
+ *    classification are automatically treated as attention regions
+ *
+ * Surface Classification (from reference implementation):
+ *   - PLANE (0): Node on a flat surface (smallest eigenvalue very small)
+ *   - EDGE (1): Node on an edge between surfaces
+ *   - CORNER (2): Node at a corner (all eigenvalues similar)
+ *   - STABLE_PLANE (4): Plane stable for > stability_threshold iterations
+ *   - STABLE_EDGE (5): Edge stable for > stability_threshold iterations
+ *   - STABLE_CORNER (6): Corner stable for > stability_threshold iterations
+ *                        (automatically added to attention regions)
  */
 
 #pragma once
@@ -25,8 +36,22 @@
 #include <vector>
 
 #include <Eigen/Core>
+#include <Eigen/Eigenvalues>
 
 namespace dd_gng {
+
+/**
+ * @brief Surface classification types from reference implementation.
+ */
+enum class SurfaceType : int {
+    UNKNOWN = 3,        // Not yet classified
+    PLANE = 0,          // Flat surface
+    EDGE = 1,           // Edge between surfaces
+    CORNER = 2,         // Corner point
+    STABLE_PLANE = 4,   // Plane stable for > stability_threshold
+    STABLE_EDGE = 5,    // Edge stable for > stability_threshold
+    STABLE_CORNER = 6   // Corner stable for > stability_threshold (auto attention)
+};
 
 /**
  * @brief DD-GNG hyperparameters.
@@ -48,6 +73,15 @@ struct DDGNGParams {
     float strength_scale = 4.0f;  // Scale factor for strength
     bool use_strength_learning = true;   // Apply strength to learning rate
     bool use_strength_insertion = true;  // Apply strength to node insertion
+
+    // Auto-detection parameters (from reference implementation)
+    bool auto_detect_attention = false;  // Enable automatic detection
+    int stability_threshold = 16;        // Iterations for corner/edge stability
+    int plane_stability_threshold = 8;   // Iterations for plane stability
+    float corner_strength = 5.0f;        // Strength for auto-detected corners
+    float plane_ev_ratio = 0.01f;        // Eigenvalue ratio for plane
+    float edge_ev_ratio = 0.1f;          // Eigenvalue ratio for edge
+    int surface_update_interval = 10;    // Surface classification update interval
 };
 
 /**
@@ -81,13 +115,24 @@ struct NeuronNodeDD {
     int id = -1;
     float error = 1.0f;
     float utility = 0.0f;
-    float strength = 1.0f;  // DD-GNG: node strength
+    float strength = 1.0f;      // DD-GNG: node strength
     PointT weight;
+    PointT normal;              // Normal vector (computed via PCA)
+    SurfaceType surface_type = SurfaceType::UNKNOWN;  // Surface classification
+    int stability_age = 0;      // How long node has maintained current surface type
+    bool auto_attention = false;  // Whether auto-detected as attention region
 
     NeuronNodeDD() = default;
     NeuronNodeDD(int id_, const PointT& weight_, float error_ = 1.0f,
                  float utility_ = 0.0f, float strength_ = 1.0f)
-        : id(id_), error(error_), utility(utility_), strength(strength_), weight(weight_) {}
+        : id(id_), error(error_), utility(utility_), strength(strength_), weight(weight_) {
+        normal.setZero();
+        if (normal.size() >= 3) {
+            normal(2) = 1.0f;  // Default Z-up normal
+        } else if (normal.size() >= 1) {
+            normal(normal.size() - 1) = 1.0f;
+        }
+    }
 };
 
 /**
@@ -100,6 +145,7 @@ class DynamicDensityGNG {
 public:
     using Scalar = typename PointT::Scalar;
     using Callback = std::function<void(const DynamicDensityGNG&, int)>;
+    static constexpr int Dim = PointT::RowsAtCompileTime;
 
     DDGNGParams params;
     std::vector<NeuronNodeDD<PointT>> nodes;
@@ -108,6 +154,7 @@ public:
     std::vector<AttentionRegion<PointT>> attention_regions;
     int n_learning = 0;
     int n_removals = 0;
+    int n_auto_attention = 0;
 
 private:
     std::deque<int> addable_indices_;
@@ -252,17 +299,65 @@ public:
         return result;
     }
 
+    std::vector<PointT> get_node_normals() const {
+        std::vector<PointT> result;
+        for (const auto& node : nodes) {
+            if (node.id != -1) {
+                result.push_back(node.normal);
+            }
+        }
+        return result;
+    }
+
+    std::vector<int> get_node_surface_types() const {
+        std::vector<int> result;
+        for (const auto& node : nodes) {
+            if (node.id != -1) {
+                result.push_back(static_cast<int>(node.surface_type));
+            }
+        }
+        return result;
+    }
+
+    std::vector<bool> get_node_auto_attention() const {
+        std::vector<bool> result;
+        for (const auto& node : nodes) {
+            if (node.id != -1) {
+                result.push_back(node.auto_attention);
+            }
+        }
+        return result;
+    }
+
+    std::vector<PointT> get_auto_attention_nodes() const {
+        std::vector<PointT> result;
+        for (const auto& node : nodes) {
+            if (node.id != -1 && node.auto_attention) {
+                result.push_back(node.weight);
+            }
+        }
+        return result;
+    }
+
 private:
     /**
      * @brief Calculate node strength based on position and attention regions.
      */
-    float calculate_strength(const PointT& position) const {
+    float calculate_strength(const PointT& position, bool auto_attention = false) const {
         float strength = 1.0f;
+
+        // Manual attention regions
         for (const auto& region : attention_regions) {
             if (region.contains(position)) {
                 strength += region.strength_bonus;
             }
         }
+
+        // Auto-detected attention (stable corners)
+        if (auto_attention) {
+            strength += params.corner_strength;
+        }
+
         return strength;
     }
 
@@ -271,7 +366,8 @@ private:
      */
     void update_node_strength(int node_id) {
         if (nodes[node_id].id == -1) return;
-        nodes[node_id].strength = calculate_strength(nodes[node_id].weight);
+        auto& node = nodes[node_id];
+        node.strength = calculate_strength(node.weight, node.auto_attention);
     }
 
     /**
@@ -280,10 +376,213 @@ private:
     void update_all_strengths() {
         for (auto& node : nodes) {
             if (node.id != -1) {
-                node.strength = calculate_strength(node.weight);
+                node.strength = calculate_strength(node.weight, node.auto_attention);
             }
         }
     }
+
+    // =========================================================================
+    // Surface Classification (Auto-detection feature)
+    // =========================================================================
+
+    /**
+     * @brief Compute normal vector via PCA on node + neighbor positions.
+     * @return Tuple of (normal_vector, eigenvalues_sorted).
+     */
+    std::pair<PointT, Eigen::Vector3f> compute_normal_pca(int node_id) {
+        auto& node = nodes[node_id];
+
+        PointT default_normal;
+        default_normal.setZero();
+        if constexpr (Dim >= 3) {
+            default_normal(2) = 1.0f;  // Default Z-up normal
+        } else {
+            default_normal(Dim - 1) = 1.0f;
+        }
+
+        // Collect positions: this node + all neighbors
+        std::vector<PointT> positions;
+        positions.push_back(node.weight);
+
+        auto it = edges_per_node.find(node_id);
+        if (it != edges_per_node.end()) {
+            for (int neighbor_id : it->second) {
+                if (nodes[neighbor_id].id != -1) {
+                    positions.push_back(nodes[neighbor_id].weight);
+                }
+            }
+        }
+
+        if (positions.size() < 3) {
+            // Need at least 3 points for meaningful PCA
+            return {default_normal, Eigen::Vector3f::Ones()};
+        }
+
+        // Compute centroid
+        PointT centroid = PointT::Zero();
+        for (const auto& pos : positions) {
+            centroid += pos;
+        }
+        centroid /= static_cast<Scalar>(positions.size());
+
+        // Compute covariance matrix (3x3 for 3D)
+        Eigen::Matrix3f cov = Eigen::Matrix3f::Zero();
+        if constexpr (Dim >= 3) {
+            for (const auto& pos : positions) {
+                Eigen::Vector3f centered;
+                for (int i = 0; i < 3; ++i) {
+                    centered(i) = pos(i) - centroid(i);
+                }
+                cov += centered * centered.transpose();
+            }
+            cov /= static_cast<float>(positions.size());
+
+            // Eigenvalue decomposition
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver(cov);
+            if (solver.info() != Eigen::Success) {
+                return {default_normal, Eigen::Vector3f::Ones()};
+            }
+
+            // eigenvalues are sorted ascending
+            Eigen::Vector3f eigenvalues = solver.eigenvalues();
+            Eigen::Vector3f normal_vec = solver.eigenvectors().col(0);
+
+            // Ensure consistent orientation (reference: if y < 0, flip)
+            if (normal_vec(1) < 0) {
+                normal_vec = -normal_vec;
+            }
+
+            // Normalize
+            float norm = normal_vec.norm();
+            if (norm > 1e-10f) {
+                normal_vec /= norm;
+            } else {
+                return {default_normal, eigenvalues};
+            }
+
+            PointT normal;
+            for (int i = 0; i < std::min(3, static_cast<int>(Dim)); ++i) {
+                normal(i) = normal_vec(i);
+            }
+            for (int i = 3; i < Dim; ++i) {
+                normal(i) = 0.0f;
+            }
+
+            return {normal, eigenvalues};
+        } else {
+            // 2D: all points are "corners"
+            return {default_normal, Eigen::Vector3f::Ones()};
+        }
+    }
+
+    /**
+     * @brief Classify surface type based on eigenvalue ratios.
+     */
+    SurfaceType classify_surface_type(const Eigen::Vector3f& eigenvalues) {
+        // Need 3D for proper classification
+        if constexpr (Dim < 3) {
+            return SurfaceType::CORNER;  // 2D points are all "corners"
+        }
+
+        // Avoid division by zero
+        float max_ev = std::max(eigenvalues(2), 1e-10f);
+
+        // Ratios: how small are the eigenvalues relative to the largest
+        float ratio_small = eigenvalues(0) / max_ev;  // smallest / largest
+        float ratio_mid = eigenvalues(1) / max_ev;    // middle / largest
+
+        if (ratio_small < params.plane_ev_ratio) {
+            // Smallest eigenvalue is very small -> PLANE
+            return SurfaceType::PLANE;
+        } else if (ratio_mid < params.edge_ev_ratio) {
+            // Middle eigenvalue is small -> EDGE (linear feature)
+            return SurfaceType::EDGE;
+        } else {
+            // All eigenvalues similar -> CORNER
+            return SurfaceType::CORNER;
+        }
+    }
+
+    /**
+     * @brief Update surface classification for a single node.
+     */
+    void update_surface_classification(int node_id) {
+        auto& node = nodes[node_id];
+        if (node.id == -1) return;
+
+        // Remember previous classification
+        SurfaceType last_type = node.surface_type;
+
+        // Compute normal and classify
+        auto [normal, eigenvalues] = compute_normal_pca(node_id);
+        node.normal = normal;
+        SurfaceType new_type = classify_surface_type(eigenvalues);
+
+        // Update stability tracking (from reference gng.cpp:523-548)
+        if (last_type == SurfaceType::STABLE_CORNER && new_type != SurfaceType::CORNER) {
+            // Was stable corner, now not a corner -> revert to corner, decrement age
+            node.surface_type = SurfaceType::CORNER;
+            node.stability_age = std::max(0, node.stability_age - 1);
+            // Lost auto-attention status
+            if (node.auto_attention) {
+                node.auto_attention = false;
+                n_auto_attention--;
+            }
+        } else if (new_type != last_type &&
+                   (last_type == SurfaceType::PLANE ||
+                    last_type == SurfaceType::EDGE ||
+                    last_type == SurfaceType::CORNER ||
+                    last_type == SurfaceType::UNKNOWN)) {
+            // Classification changed -> reset age
+            node.surface_type = new_type;
+            node.stability_age = 0;
+        } else if (new_type == SurfaceType::PLANE ||
+                   new_type == SurfaceType::EDGE ||
+                   new_type == SurfaceType::CORNER) {
+            // Same classification -> increment age
+            node.surface_type = new_type;
+            node.stability_age = std::min(25, node.stability_age + 1);
+
+            // Check for promotion to stable variant
+            if (new_type == SurfaceType::PLANE &&
+                node.stability_age > params.plane_stability_threshold) {
+                node.surface_type = SurfaceType::STABLE_PLANE;
+            } else if (new_type == SurfaceType::EDGE &&
+                       node.stability_age > params.stability_threshold) {
+                node.surface_type = SurfaceType::STABLE_EDGE;
+            } else if (new_type == SurfaceType::CORNER &&
+                       node.stability_age > params.stability_threshold) {
+                // Promote to stable corner -> AUTO ATTENTION!
+                node.surface_type = SurfaceType::STABLE_CORNER;
+                if (!node.auto_attention) {
+                    node.auto_attention = true;
+                    n_auto_attention++;
+                }
+            }
+        } else {
+            // Already stable -> just decrement age slightly
+            node.stability_age = std::max(0, node.stability_age - 1);
+        }
+    }
+
+    /**
+     * @brief Update surface classifications for all active nodes.
+     */
+    void update_all_surface_classifications() {
+        if (!params.auto_detect_attention) return;
+        if constexpr (Dim < 3) return;  // Surface classification requires 3D
+
+        for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+            if (nodes[i].id != -1) {
+                update_surface_classification(i);
+            }
+        }
+
+        // Update strengths after classification changes
+        update_all_strengths();
+    }
+
+    // =========================================================================
 
     int add_node(const PointT& weight, float error = 1.0f, float utility = 0.0f) {
         if (addable_indices_.empty()) return -1;
@@ -300,6 +599,11 @@ private:
         auto it = edges_per_node.find(node_id);
         if (!force && it != edges_per_node.end() && !it->second.empty()) {
             return false;
+        }
+
+        // Track auto-attention removal
+        if (nodes[node_id].auto_attention) {
+            n_auto_attention--;
         }
 
         if (it != edges_per_node.end()) {
@@ -453,6 +757,13 @@ private:
         if (n_trial_ >= params.lambda) {
             n_trial_ = 0;
             insert_node_with_density();
+        }
+
+        // Auto-detection: Update surface classifications periodically
+        if (params.auto_detect_attention &&
+            n_learning > 0 &&
+            n_learning % params.surface_update_interval == 0) {
+            update_all_surface_classifications();
         }
 
         n_learning++;

@@ -42,6 +42,13 @@ def main():
     from test_ladder import main as test_ladder
     results["ladder"] = test_ladder()
 
+    # Test 4: Auto-Detection
+    print("\n" + "=" * 70)
+    print("Running Test 4: Auto-Detection...")
+    print("=" * 70)
+    from test_auto_detection import main as test_auto_detection
+    results["auto_detection"] = test_auto_detection()
+
     # Summary
     print("\n" + "=" * 70)
     print("VALIDATION SUMMARY")
@@ -49,6 +56,7 @@ def main():
     print(f"\nTest 1 (Strength Calculation):  {'PASS' if results['strength'] else 'FAIL'}")
     print(f"Test 2 (Density Comparison):    {'PASS' if results['density'] else 'FAIL'}")
     print(f"Test 3 (Ladder Detection):      {'PASS' if results['ladder'] else 'FAIL'}")
+    print(f"Test 4 (Auto-Detection):        {'PASS' if results['auto_detection'] else 'FAIL'}")
 
     all_pass = all(results.values())
     print(f"\nOverall: {'ALL TESTS PASSED' if all_pass else 'SOME TESTS FAILED'}")
@@ -58,6 +66,7 @@ def main():
     print("  - strength_test.gif / strength_test.png")
     print("  - density_comparison.gif / density_comparison.png")
     print("  - ladder_detection.gif / ladder_detection.png")
+    print("  - auto_detection.gif / auto_detection.png")
 
     return all_pass
 

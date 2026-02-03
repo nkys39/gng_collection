@@ -15,6 +15,7 @@ Saputra et al. (2019) の **DD-GNG (Dynamic Density Growing Neural Gas)** 論文
 | Test 1 | 強度計算の正確性 | **PASS** |
 | Test 2 | 密度比較 (DD-GNG vs GNG-U2) | **PASS** |
 | Test 3 | 梯子検出シナリオ | **PASS** |
+| Test 4 | 自動注目領域検出 | **PASS** |
 
 ---
 
@@ -115,13 +116,58 @@ Saputra et al. (2019) の **DD-GNG (Dynamic Density Growing Neural Gas)** 論文
 
 ---
 
+## Test 4: 自動注目領域検出（論文完全実装）
+
+リファレンス実装の `calc_node_normal_vector()` に基づく自動検出機能の検証。
+
+### アルゴリズム
+
+1. **法線計算**: 各ノードと隣接ノードの位置からPCA（主成分分析）で法線ベクトルを計算
+2. **サーフェス分類**: 固有値比に基づいてノードを分類
+   - **平面 (PLANE)**: 最小固有値が非常に小さい
+   - **エッジ (EDGE)**: 中間固有値が小さい
+   - **コーナー (CORNER)**: 全固有値が類似
+3. **安定性追跡**: 同じ分類を維持した反復回数をカウント
+4. **自動検出**: `stability_threshold`（デフォルト16）反復以上コーナーを維持 → 安定コーナー → 自動的に注目領域として扱う
+
+### シナリオ設定
+
+- L字型点群（床と壁）: コーナー部分が自動検出されるべき
+- 比較: 自動検出有効 vs 無効
+
+### 結果
+
+| 指標 | 手動（無効） | 自動検出 |
+|------|------------|---------|
+| 総ノード数 | ~80 | ~80 |
+| 自動注目ノード | 0 | 5+ |
+| コーナー領域密度 | 低 | 高 |
+
+### 可視化
+
+| 成長過程 |
+|:--------:|
+| ![Auto GIF](outputs/auto_detection.gif) |
+
+| 手動 | 自動（強度） | サーフェス分類 |
+|:----:|:----------:|:-------------:|
+| ![Auto PNG](outputs/auto_detection.png) |
+
+**観察点**:
+- 緑 = 平面、黄 = エッジ、赤 = コーナー
+- 三角マーカー = 自動検出された注目ノード
+- コーナー領域で高い密度を達成
+
+---
+
 ## 結論
 
-DD-GNG 実装は論文 Saputra et al. (2019) の設計意図を正しく再現できています：
+DD-GNG 実装は論文 Saputra et al. (2019) の設計意図と参照実装を正しく再現できています：
 
 1. **強度計算**: 注目領域内外で期待通りの強度値
 2. **密度制御**: GNG-U2 比で約8.5倍の密度改善
 3. **実用シナリオ**: 梯子検出で全ラングを正確に検出
+4. **自動検出**: サーフェス分類に基づく安定コーナーの自動検出
 
 ---
 
@@ -136,6 +182,7 @@ python run_all.py
 python test_strength.py
 python test_density.py
 python test_ladder.py
+python test_auto_detection.py
 ```
 
 ## 出力ファイル
@@ -147,5 +194,7 @@ outputs/
 ├── density_comparison.gif # Test 2: 成長過程比較
 ├── density_comparison.png # Test 2: 最終状態比較
 ├── ladder_detection.gif   # Test 3: 成長過程
-└── ladder_detection.png   # Test 3: 最終状態
+├── ladder_detection.png   # Test 3: 最終状態
+├── auto_detection.gif     # Test 4: 自動検出過程
+└── auto_detection.png     # Test 4: 最終状態・サーフェス分類
 ```

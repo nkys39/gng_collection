@@ -49,6 +49,26 @@ effective_eps_b = eps_b / strength
 model.train_with_density_sampling(data, attention_sampling_ratio=0.5)
 ```
 
+### 5. 自動注目領域検出（論文完全実装）
+
+リファレンス実装 `calc_node_normal_vector()` に基づくサーフェス分類による自動検出：
+
+```python
+# 自動検出を有効化
+params = DDGNGParams(
+    auto_detect_attention=True,  # 自動検出を有効化
+    stability_threshold=16,      # 安定性閾値（反復回数）
+    corner_strength=5.0,         # 安定コーナーの強度ボーナス
+)
+```
+
+**サーフェス分類**:
+- **平面 (PLANE)**: 最小固有値が非常に小さい → 安定平面 (STABLE_PLANE)
+- **エッジ (EDGE)**: 中間固有値が小さい → 安定エッジ (STABLE_EDGE)
+- **コーナー (CORNER)**: 全固有値が類似 → 安定コーナー (STABLE_CORNER) → **自動注目領域**
+
+安定コーナー（16反復以上コーナー分類を維持）は自動的に注目領域として扱われ、高い強度が付与されます。
+
 ## アルゴリズム
 
 ### Algorithm 1: Dynamic Topological Structure (論文より)
@@ -105,7 +125,21 @@ def calculate_strength(node_position, obstacles):
 | use_strength_learning | True | 学習率への強度適用 |
 | use_strength_insertion | True | ノード挿入への強度適用 |
 
+### 自動検出パラメータ（リファレンス実装準拠）
+
+| パラメータ | デフォルト | 説明 |
+|-----------|----------|------|
+| auto_detect_attention | False | 自動検出を有効化 |
+| stability_threshold | 16 | コーナー/エッジの安定性閾値 |
+| plane_stability_threshold | 8 | 平面の安定性閾値 |
+| corner_strength | 5.0 | 自動検出コーナーの強度ボーナス |
+| plane_ev_ratio | 0.01 | 平面分類の固有値比閾値 |
+| edge_ev_ratio | 0.1 | エッジ分類の固有値比閾値 |
+| surface_update_interval | 10 | サーフェス分類更新間隔 |
+
 ## 使用例
+
+### 手動注目領域指定
 
 ```python
 from algorithms.dd_gng.python import DynamicDensityGNG, DDGNGParams
@@ -132,16 +166,40 @@ model.add_attention_region(
 # 学習
 model.train(data, n_iterations=8000)
 
-# または動的サンプリング付き学習
-model.train_with_density_sampling(
-    data,
-    n_iterations=8000,
-    attention_sampling_ratio=0.5,  # 50%を注目領域から
+# 結果取得
+nodes, edges = model.get_graph()
+strengths = model.get_node_strengths()
+```
+
+### 自動注目領域検出
+
+```python
+from algorithms.dd_gng.python import DynamicDensityGNG, DDGNGParams
+
+# 自動検出パラメータ設定
+params = DDGNGParams(
+    max_nodes=150,
+    lambda_=100,
+    eps_b=0.1,
+    # 自動検出を有効化
+    auto_detect_attention=True,
+    stability_threshold=16,     # 16反復以上安定 → 自動検出
+    corner_strength=5.0,        # 安定コーナーの強度ボーナス
 )
+
+# モデル作成（3D必須）
+model = DynamicDensityGNG(n_dim=3, params=params, seed=42)
+
+# 学習（注目領域は自動検出される）
+model.train(data, n_iterations=8000)
 
 # 結果取得
 nodes, edges = model.get_graph()
 strengths = model.get_node_strengths()
+surface_types = model.get_node_surface_types()  # サーフェス分類
+auto_attention = model.get_node_auto_attention()  # 自動検出フラグ
+normals = model.get_node_normals()  # 法線ベクトル
+print(f"Auto-detected attention nodes: {model.n_auto_attention}")
 ```
 
 ## GNG-U2との違い
@@ -152,7 +210,10 @@ strengths = model.get_node_strengths()
 | 動的密度制御 | なし | あり |
 | 強度重み付き挿入 | なし | error * strength^4 |
 | 強度重み付き学習 | なし | eps_b / strength |
-| 注目領域設定 | なし | add_attention_region() |
+| 手動注目領域設定 | なし | add_attention_region() |
+| 自動注目領域検出 | なし | サーフェス分類による自動検出 |
+| 法線計算 | なし | PCAベースの法線推定 |
+| サーフェス分類 | なし | 平面/エッジ/コーナー分類 |
 
 ## 応用例
 
