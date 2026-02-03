@@ -90,12 +90,44 @@ GNG Efficient は、標準GNGアルゴリズムに2つの最適化を適用し�
 
 | max_nodes | Standard GNG | UG only | 高速化 | エッジ数 (Std/UG) |
 |-----------|-------------|---------|--------|-------------------|
-| 500 | 45.4s | 10.3s | **4.4x** | 1298 / 1298 ✓ |
+| 500 | 45.4s | 10.3s | **4.4x** | 1264 / 1264 ✓ |
 | 1000 | 177.0s | 20.8s | **8.5x** | 2631 / 2604 ✓ |
 
 **観察結果**:
 - **Uniform Grid (UG)**: ノード数が増えるほど効果大。1000ノードで約8.5倍高速化
-- **Lazy Error**: 結果のエッジ数が異なる（論文のβ解釈の違いによる）
+- **Lazy Error**: 結果のエッジ数が異なる（下記「Lazy Errorの制限」参照）
+
+### Lazy Errorの制限（重要）
+
+論文のLazy Error公式は、標準GNGのエラー処理と**完全に等価ではない**ことが判明しました。
+
+**数学的差異**:
+```
+標準GNG:     E = E × β^λ + dist_sq × β^(λ-s-1)
+論文Lazy:    E = E × β^(λ-s) + dist_sq
+```
+
+- 既存エラーへの減衰: β^λ vs β^(λ-s) → Lazyは減衰が少ない
+- 新規エラーへの減衰: β^(λ-s-1) vs 1 → Lazyは減衰なし
+
+**影響**: エラー蓄積が増加し、ノード選択順序とトポロジーが標準GNGと異なる結果になる。
+
+**推奨設定**:
+```python
+# 標準GNGと同等の結果が必要な場合（推奨）
+params = GNGEfficientParams(
+    use_uniform_grid=True,   # 4-8倍高速化
+    use_lazy_error=False,    # 結果を保持
+)
+
+# 論文完全再現が必要な場合
+params = GNGEfficientParams(
+    use_uniform_grid=True,
+    use_lazy_error=True,     # 最大高速化（結果は異なる）
+)
+```
+
+詳細は `references/notes/gng_efficient_fiser2013.md` セクション8.5を参照。
 
 ### ベンチマークの実行
 

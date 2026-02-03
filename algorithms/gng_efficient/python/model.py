@@ -303,10 +303,22 @@ class GNGEfficient:
     def _inc_error(self, node: NeuronNode, value: float) -> None:
         """Increment node error with lazy evaluation.
 
-        Implements inc_error* from Algorithm 4:
-            1. fix_error(c, v)
-            2. E_v <- beta^(lambda-s) * E_v + value
-            3. update node in heap
+        Implements inc_error* from Algorithm 4 of Fišer et al. (2013):
+            E_ν = β^(λ-s) * E_ν + value
+
+        IMPORTANT: This formula is an APPROXIMATION of standard GNG behavior.
+        Standard GNG computes:
+            E = E * β^λ + value * β^(λ-s-1)
+
+        The paper's formula differs in two ways:
+        1. Decay on existing error: β^(λ-s) instead of β^λ
+        2. No decay on new value: 1 instead of β^(λ-s-1)
+
+        This causes Lazy Error to accumulate more error than standard GNG,
+        leading to different node selection and topology. For standard GNG
+        equivalent results, use use_lazy_error=False.
+
+        See references/notes/gng_efficient_fiser2013.md section 8.5 for details.
 
         Args:
             node: Node to update.
@@ -315,10 +327,13 @@ class GNGEfficient:
         # Fix error to current cycle
         self._fix_error(self.cycle, node)
 
-        # Apply the formula: E_v <- beta^(lambda-s) * E_v + value
-        # This accounts for the remaining decay within this cycle
-        decay_factor = self._beta_powers[self.params.lambda_ - self.step]
-        node.error = decay_factor * node.error + value
+        # Calculate remaining steps in this cycle
+        remaining = self.params.lambda_ - self.step
+
+        # Paper's formula (Algorithm 4): E = β^(λ-s) * E + value
+        # Note: This is an approximation, not equivalent to standard GNG
+        decay_E = self._beta_powers[remaining]  # β^(λ-s)
+        node.error = decay_E * node.error + value
 
         # Update in heap
         self._error_heap.update(node)
