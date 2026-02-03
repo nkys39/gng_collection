@@ -501,6 +501,10 @@ class GNGEfficient:
 
         Each iteration randomly samples one point from data.
 
+        Per Section 4.2 of Fišer et al. (2013):
+        "The growing uniform grid starts with a single cell encapsulating
+        an axis aligned bounding box of the input signals."
+
         Args:
             data: Training data of shape (n_samples, n_dim).
             n_iterations: Number of training iterations.
@@ -510,6 +514,12 @@ class GNGEfficient:
             self for chaining.
         """
         n_samples = len(data)
+
+        # Initialize grid with input signal bounding box (Section 4.2)
+        if self._grid is not None:
+            min_coords = np.min(data, axis=0)
+            max_coords = np.max(data, axis=0)
+            self._grid.initialize_with_bounds(min_coords, max_coords)
 
         for _ in range(n_iterations):
             # Update step counter (s in Algorithm 3)

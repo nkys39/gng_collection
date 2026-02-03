@@ -83,6 +83,49 @@ public:
           grid_dims_(Eigen::Matrix<int, Dim, 1>::Ones())
     {}
 
+    /**
+     * @brief Initialize grid with input signal bounding box.
+     *
+     * Per Section 4.2 of Fišer et al. (2013):
+     * "The growing uniform grid starts with a single cell encapsulating
+     * an axis aligned bounding box of the input signals."
+     *
+     * @param min_coords Minimum coordinates of input signal bounding box.
+     * @param max_coords Maximum coordinates of input signal bounding box.
+     */
+    void initialize_with_bounds(const PointT& min_coords, const PointT& max_coords) {
+        // Add small margin to ensure nodes at boundaries are included
+        PointT extent = max_coords - min_coords;
+        PointT margin = extent * 0.01;
+        for (int d = 0; d < Dim; ++d) {
+            margin(d) += static_cast<Scalar>(1e-6);
+        }
+
+        origin_ = min_coords - margin;
+
+        // Single cell covering the entire bounding box
+        PointT full_extent = (max_coords + margin) - origin_;
+        cell_size_ = full_extent.maxCoeff() + static_cast<Scalar>(1e-6);
+        grid_dims_ = Eigen::Matrix<int, Dim, 1>::Ones();
+
+        // Re-insert all existing nodes into the new grid
+        std::vector<NeuronNode<PointT>*> all_nodes;
+        for (auto& [idx, cell] : cells_) {
+            for (auto* node : cell) {
+                all_nodes.push_back(node);
+            }
+        }
+
+        cells_.clear();
+        node_cell_map_.clear();
+
+        for (auto* node : all_nodes) {
+            int64_t cell_idx = get_cell_index(node->weight);
+            cells_[cell_idx].push_back(node);
+            node_cell_map_[node->id] = cell_idx;
+        }
+    }
+
     void insert(NeuronNode<PointT>* node) {
         if (n_nodes_ == 0) {
             origin_ = node->weight - PointT::Constant(0.5);
@@ -573,6 +616,19 @@ public:
     void train(const std::vector<PointT>& data, int n_iterations,
                const Callback& callback = nullptr) {
         if (data.empty()) return;
+
+        // Initialize grid with input signal bounding box (Section 4.2)
+        if (grid_) {
+            PointT min_coords = data[0];
+            PointT max_coords = data[0];
+            for (const auto& point : data) {
+                for (int d = 0; d < Dim; ++d) {
+                    if (point(d) < min_coords(d)) min_coords(d) = point(d);
+                    if (point(d) > max_coords(d)) max_coords(d) = point(d);
+                }
+            }
+            grid_->initialize_with_bounds(min_coords, max_coords);
+        }
 
         std::uniform_int_distribution<int> dist(0, static_cast<int>(data.size()) - 1);
 

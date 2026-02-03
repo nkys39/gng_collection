@@ -93,6 +93,47 @@ class GrowingUniformGrid:
         self.cells = {}
         self.node_cell_map = {}
 
+    def initialize_with_bounds(
+        self, min_coords: np.ndarray, max_coords: np.ndarray
+    ) -> None:
+        """Initialize grid with input signal bounding box.
+
+        Per Section 4.2 of Fišer et al. (2013):
+        "The growing uniform grid starts with a single cell encapsulating
+        an axis aligned bounding box of the input signals."
+
+        This method should be called at the start of training with the
+        data distribution bounds. Nodes will move toward input signals,
+        so they should always stay within these bounds.
+
+        Args:
+            min_coords: Minimum coordinates of input signal bounding box.
+            max_coords: Maximum coordinates of input signal bounding box.
+        """
+        # Add small margin to ensure nodes at boundaries are included
+        margin = (max_coords - min_coords) * 0.01 + 1e-6
+        self.origin = (min_coords - margin).astype(np.float64)
+
+        # Single cell covering the entire bounding box
+        extent = (max_coords + margin) - self.origin
+        self.cell_size = float(np.max(extent)) + 1e-6
+        self.grid_dims = np.ones(self.n_dim, dtype=np.int32)
+
+        # Re-insert all existing nodes into the new grid
+        all_nodes = []
+        for node_list in self.cells.values():
+            all_nodes.extend(node_list)
+
+        self.cells = {}
+        self.node_cell_map = {}
+
+        for node in all_nodes:
+            cell_coords = self._get_cell_coords(node.weight)
+            if cell_coords not in self.cells:
+                self.cells[cell_coords] = []
+            self.cells[cell_coords].append(node)
+            self.node_cell_map[node.id] = cell_coords
+
     def _get_cell_coords(self, position: np.ndarray) -> tuple:
         """Compute cell coordinates for a position.
 
