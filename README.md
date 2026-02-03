@@ -10,6 +10,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | アルゴリズム | 特徴 |
 |-------------|------|
 | **GNG** | ノードを動的に追加、エッジ年齢に基づくトポロジー学習 |
+| **GNG Efficient** | GNG + Uniform Grid + Lazy Error で数百倍高速化 (Fišer 2013) |
 | **GNG-U** | GNG + Utility基準でノード削除、非定常分布に対応 |
 | **GNG-U2** | GNG-U改良版、κ間隔Utilityチェックでリアルタイム処理対応 |
 | **AiS-GNG** | GNG-U2 + Add-if-Silentルール、高密度位相構造の高速生成 |
@@ -38,6 +39,16 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | Python (5K iter) | C++ (50K iter) | トラッキング |
 |:----------------:|:--------------:|:-----------:|
 | ![GNG Python](experiments/2d_visualization/samples/gng/python/triple_ring_growth.gif) | ![GNG C++](experiments/2d_visualization/samples/gng/cpp/triple_ring_growth.gif) | ![GNG Tracking](experiments/2d_visualization/samples/gng/python/tracking.gif) |
+
+### GNG Efficient (高速化GNG)
+
+Fišer et al. (2013) による最適化版。Uniform Grid（O(1)最近傍探索）とLazy Error Evaluation（遅延エラー計算）により、50,000ノードで約777倍の高速化を実現。
+
+| トリプルリング | トラッキング |
+|:-------------:|:-----------:|
+| ![GNG Efficient](experiments/gng_efficient/2d/triple_ring_growth.gif) | ![GNG Efficient Tracking](experiments/gng_efficient/2d/tracking.gif) |
+
+詳細: [experiments/gng_efficient/README.md](experiments/gng_efficient/README.md)
 
 ### GNG-U (GNG with Utility)
 
@@ -172,6 +183,14 @@ scipy.spatial.Delaunay による明示的な三角形分割でトポロジーを
 |:--------:|:--------:|
 | ![GNG 3D](experiments/3d_pointcloud/samples/gng/python/floor_wall_growth.gif) | ![GNG 3D Final](experiments/3d_pointcloud/samples/gng/python/floor_wall_final.png) |
 
+### GNG Efficient
+
+Fišer et al. (2013) による高速化版。大規模点群処理に最適。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GNG Efficient 3D](experiments/gng_efficient/3d/floor_wall_growth.gif) | ![GNG Efficient 3D Final](experiments/gng_efficient/3d/floor_wall_final.png) |
+
 ### GNG-U
 
 Utility付きGNG。低利用ノードを削除して非定常分布に対応。
@@ -280,6 +299,7 @@ gng_collection/
 ├── algorithms/          # 各アルゴリズム実装
 │   ├── _template/       # 新アルゴリズム用テンプレート
 │   ├── gng/             # 標準GNG
+│   ├── gng_efficient/   # GNG Efficient (高速化版)
 │   ├── gng_u/           # GNG-U (Utility)
 │   ├── gng_u2/          # GNG-U2 (Utility V2 - κ間隔チェック)
 │   ├── ais_gng/         # AiS-GNG (Add-if-Silent Rule)
@@ -309,6 +329,7 @@ gng_collection/
 | アルゴリズム | Python | C++ | 説明 |
 |-------------|:------:|:---:|------|
 | GNG         | ✓      | ✓   | Growing Neural Gas - 動的トポロジー学習 |
+| GNG Efficient | ✓    | ✓   | GNG + Uniform Grid + Lazy Error - 高速化版 (Fišer 2013) |
 | GNG-U       | ✓      | ✓   | GNG with Utility - 非定常分布対応 |
 | GNG-U2      | ✓      | ✓   | GNG with Utility V2 - κ間隔Utilityチェック |
 | AiS-GNG     | ✓      | ✓   | Add-if-Silent GNG - 高密度位相構造の高速生成 |
@@ -394,6 +415,24 @@ from algorithms.gng.python.model import GrowingNeuralGas, GNGParams
 params = GNGParams(max_nodes=50, lambda_=100)
 gng = GrowingNeuralGas(n_dim=2, params=params)
 gng.train(X, n_iterations=5000)
+nodes, edges = gng.get_graph()
+```
+
+### GNG Efficient (高速化版)
+
+```python
+from algorithms.gng_efficient.python.model import GNGEfficient, GNGEfficientParams
+
+params = GNGEfficientParams(
+    max_nodes=150,
+    lambda_=200,
+    use_uniform_grid=True,  # O(1)最近傍探索
+    use_lazy_error=True,    # 遅延エラー計算
+    h_t=0.1,                # グリッド密度閾値
+    h_rho=1.5,              # グリッド拡張係数
+)
+gng = GNGEfficient(n_dim=3, params=params)
+gng.train(X, n_iterations=10000)
 nodes, edges = gng.get_graph()
 ```
 
@@ -574,6 +613,7 @@ cd experiments/2d_visualization
 
 # 各アルゴリズムのテスト（トリプルリング）
 python test_gng_triple_ring.py
+python test_gng_efficient_triple_ring.py
 python test_gngu_triple_ring.py
 python test_gngu2_triple_ring.py
 python test_aisgng_triple_ring.py
@@ -588,6 +628,7 @@ python test_gg_triple_ring.py
 
 # トラッキングテスト
 python test_gng_tracking.py
+python test_gng_efficient_tracking.py
 python test_gngu_tracking.py
 python test_gngu2_tracking.py
 python test_aisgng_tracking.py
@@ -657,6 +698,7 @@ from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
 各アルゴリズムの詳細は `references/notes/` を参照してください。
 
 - **GNG**: Fritzke, B. (1995). "A Growing Neural Gas Network Learns Topologies" (NIPS'94)
+- **GNG Efficient**: Fišer, D., Faigl, J., & Kulich, M. (2013). "Growing Neural Gas Efficiently" (Neurocomputing)
 - **GNG-U**: Fritzke, B. (1997). "Some Competitive Learning Methods"
 - **GNG-U2**: Toda, Y., et al. (2016). "Real-time 3D point cloud segmentation using Growing Neural Gas with Utility" (IEEE ICRA 2016)
 - **AiS-GNG (RO-MAN)**: Shoji, M., Obo, T., & Kubota, N. (2023). "Add-if-Silent Rule-Based Growing Neural Gas for High-Density Topological Structure of Unknown Objects" (IEEE RO-MAN 2023, pp. 2492-2498)
