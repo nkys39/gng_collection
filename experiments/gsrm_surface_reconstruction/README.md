@@ -215,8 +215,8 @@ algorithms/gsrm/
 │   ├── __init__.py
 │   ├── model.py          # GSRMアルゴリズム実装
 │   └── REFERENCE.md      # 実装ノート
-└── cpp/                   # （将来的にC++実装）
-    └── ...
+└── cpp/
+    └── gsrm.hpp          # C++実装（Eigenベース）
 
 experiments/gsrm_surface_reconstruction/
 ├── README.md             # この計画書

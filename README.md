@@ -18,6 +18,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | **GNG-DT** | GNG + 複数トポロジー学習（位置、色、法線で独立したエッジ構造）。ロボット版も提供 |
 | **DD-GNG** | GNG-U2 + 動的密度制御（注目領域で高密度ノード配置、strength機構） |
 | **AiS-GNG-DT** | GNG-DT + AiS-GNGの組み合わせ実験（複数トポロジー + Add-if-Silent + Utility管理） |
+| **GSRM** | GNG + 表面再構成（3勝者ECHL、三角形面生成、トポロジー学習） |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
 
@@ -289,6 +290,29 @@ GNG-DTとAiS-GNGを組み合わせた実験的アルゴリズム。複数トポ�
 |:--------:|:--------:|
 | ![GCS 3D](experiments/3d_pointcloud/samples/gcs/floor_wall_growth.gif) | ![GCS 3D Final](experiments/3d_pointcloud/samples/gcs/floor_wall_final.png) |
 
+## 3D表面再構成
+
+GSRMによる3D表面再構成テスト。球体およびトーラス点群からメッシュを生成。
+
+### GSRM (Growing Self-Reconstruction Meshes)
+
+Extended Competitive Hebbian Learning（3勝者ECHL）で三角形面を直接生成。GCS方式のノード挿入で面を分割。
+
+**球体再構成:**
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GSRM Sphere](experiments/gsrm_surface_reconstruction/samples/gsrm/python/sphere_growth.gif) | ![GSRM Sphere Final](experiments/gsrm_surface_reconstruction/samples/gsrm/python/sphere_final.png) |
+
+**トーラス再構成:**
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![GSRM Torus](experiments/gsrm_surface_reconstruction/samples/gsrm/python/torus_growth.gif) | ![GSRM Torus Final](experiments/gsrm_surface_reconstruction/samples/gsrm/python/torus_final.png) |
+
+**手法比較 (GNG vs GCS vs GSRM):**
+| 球体 | トーラス |
+|:----:|:-------:|
+| ![Compare Sphere](experiments/gsrm_surface_reconstruction/samples/gsrm/python/compare_sphere.png) | ![Compare Torus](experiments/gsrm_surface_reconstruction/samples/gsrm/python/compare_torus.png) |
+
 ## 対応言語
 
 - Python
@@ -309,6 +333,7 @@ gng_collection/
 │   ├── gng_dt/          # GNG-DT (Different Topologies)
 │   ├── ais_gng_dt/      # AiS-GNG-DT (実験的: GNG-DT + AiS-GNG)
 │   ├── dd_gng/          # DD-GNG (Dynamic Density GNG)
+│   ├── gsrm/            # GSRM (表面再構成)
 │   ├── som/             # Self-Organizing Map
 │   ├── neural_gas/      # Neural Gas
 │   ├── gcs/             # Growing Cell Structures
@@ -339,6 +364,7 @@ gng_collection/
 | GNG-DT      | ✓      | ✓   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版C++含む） |
 | DD-GNG      | ✓      | ✓   | Dynamic Density GNG - 動的密度制御（注目領域で高密度配置） |
 | AiS-GNG-DT  | ✓      | ✓   | GNG-DT + AiS-GNG 実験的組み合わせ（複数トポロジー + Add-if-Silent） |
+| GSRM        | ✓      | ✓   | Growing Self-Reconstruction Meshes - 3D表面再構成（ECHL、三角形面生成） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
@@ -593,6 +619,37 @@ normals = ddgng.get_node_normals()               # 法線ベクトル
 | `auto_detect_attention` | サーフェス分類に基づく自動注目領域検出（3D専用） |
 | `surface_type` | PCA法線からの分類（平面/エッジ/コーナー） |
 
+### GSRM (表面再構成)
+
+3D点群から三角形メッシュを直接生成。Extended CHL（3勝者）で三角形面を構築。
+
+```python
+from algorithms.gsrm.python.model import GSRM, GSRMParams
+
+params = GSRMParams(
+    max_nodes=200,
+    lambda_=50,         # ノード挿入間隔
+    eps_b=0.1,          # 勝者学習率
+    eps_n=0.01,         # 隣接学習率
+    max_age=100,        # エッジ最大年齢
+)
+gsrm = GSRM(params=params)
+gsrm.train(points_3d, n_iterations=10000)  # 3D点群
+
+# ノードと三角形面の取得
+nodes, edges = gsrm.get_graph()
+faces = gsrm.faces  # 三角形面リスト [(v0, v1, v2), ...]
+print(f"Nodes: {len(nodes)}, Faces: {len(faces)}")
+```
+
+**GSRMの主な特徴：**
+| 機能 | 説明 |
+|------|------|
+| Extended CHL | 3勝者を選択し三角形面を直接生成 |
+| GCS方式挿入 | ノード挿入時に面を分割 |
+| 面連動エッジ管理 | エッジ削除時に関連する面も削除 |
+| Hausdorff距離評価 | メッシュ品質の定量評価が可能 |
+
 ### SOM
 
 ```python
@@ -680,6 +737,12 @@ python test_gcs_tracking.py
 
 # 軌跡可視化
 python test_gng_trajectory.py
+
+# GSRM表面再構成テスト
+cd ../gsrm_surface_reconstruction
+python test_gsrm_sphere.py
+python test_gsrm_torus.py
+python compare_methods.py
 ```
 
 ## 新しいアルゴリズムの追加
@@ -746,6 +809,7 @@ from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
 - **GNG-D**: Martinetz & Schulten (1994) の明示的Delaunay手法を応用
 - **GNG-DT**: Toda, Y., et al. (2022). "Learning of Point Cloud Data by Growing Neural Gas with Different Topologies"
 - **DD-GNG**: Saputra, A.A., et al. (2019). "Dynamic Density Topological Structure Generation for Real-Time Ladder Affordance Detection"
+- **GSRM**: Ivrissimtzis, I. P. et al. (2004). "Growing Meshes through Self-Reconstruction" (IEEE International Conference on Shape Modeling and Applications)
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"
 - **Neural Gas**: Martinetz, T. and Schulten, K. (1991). "A Neural-Gas Network Learns Topologies"
 - **GCS**: Fritzke, B. (1994). "Growing cell structures - a self-organizing network"
