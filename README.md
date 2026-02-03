@@ -19,7 +19,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | **DD-GNG** | GNG-U2 + 動的密度制御（注目領域で高密度ノード配置、strength機構） |
 | **AiS-GNG-DT** | GNG-DT + AiS-GNGの組み合わせ実験（複数トポロジー + Add-if-Silent + Utility管理） |
 | **GSRM** | GNG + 表面再構成（3勝者ECHL、三角形面生成、トポロジー学習） |
-| **GSRM-F** | GSRM + シャープエッジ検出・保持（PCA法線、適応学習率） |
+| **GSRM-F** | GSRM + シャープエッジ検出・保持（PCA法線、適応学習率）【実験的】 |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
 
@@ -314,9 +314,11 @@ Extended Competitive Hebbian Learning（3勝者ECHL）で三角形面を直接�
 |:----:|:-------:|
 | ![Compare Sphere](experiments/gsrm_surface_reconstruction/samples/gsrm/python/compare_sphere.png) | ![Compare Torus](experiments/gsrm_surface_reconstruction/samples/gsrm/python/compare_torus.png) |
 
-### GSRM-F (Feature-Preserving GSRM)
+### GSRM-F (Feature-Preserving GSRM)【実験的】
 
-GSRMにシャープエッジ検出・保持機能を追加した拡張版。PCA法線計算でエッジを検出し、適応学習率でエッジを保持。
+GSRMにシャープエッジ検出・保持機能を追加した実験的拡張。PCA法線計算でエッジを検出し、適応学習率でエッジを保持。
+
+> **注意**: GSRM-Fは論文に基づかない独自実装です。GNG-DT RobotのPCA法線計算とfeature-preserving meshingの一般的アイデアを組み合わせた実験的手法です。
 
 **床と壁テスト（シャープエッジ検出）:**
 | 成長過程 | 最終状態 |
@@ -381,7 +383,7 @@ gng_collection/
 | DD-GNG      | ✓      | ✓   | Dynamic Density GNG - 動的密度制御（注目領域で高密度配置） |
 | AiS-GNG-DT  | ✓      | ✓   | GNG-DT + AiS-GNG 実験的組み合わせ（複数トポロジー + Add-if-Silent） |
 | GSRM        | ✓      | ✓   | Growing Self-Reconstruction Meshes - 3D表面再構成（ECHL、三角形面生成） |
-| GSRM-F      | ✓      | -   | Feature-Preserving GSRM - シャープエッジ検出・保持 |
+| GSRM-F      | ✓      | -   | Feature-Preserving GSRM - シャープエッジ検出・保持【実験的】 |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
 | GCS         | ✓      | ✓   | Growing Cell Structures - メッシュ構造 |
@@ -667,9 +669,9 @@ print(f"Nodes: {len(nodes)}, Faces: {len(faces)}")
 | 面連動エッジ管理 | エッジ削除時に関連する面も削除 |
 | Hausdorff距離評価 | メッシュ品質の定量評価が可能 |
 
-### GSRM-F (Feature-Preserving GSRM)
+### GSRM-F (Feature-Preserving GSRM)【実験的】
 
-GSRMにシャープエッジ検出・保持機能を追加。PCA法線計算でエッジを検出。
+GSRMにシャープエッジ検出・保持機能を追加した実験的拡張。PCA法線計算でエッジを検出。
 
 ```python
 from algorithms.gsrm.python.model_feature import GSRMF, GSRMFParams

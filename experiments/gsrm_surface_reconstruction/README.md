@@ -77,9 +77,11 @@
 - トーラス（穴あり）は球体よりも良好な近似を達成（表面の曲率が均一なため）
 - 計算時間はノード数に対してほぼ線形に増加
 
-### GSRM-F (Feature-Preserving GSRM) - シャープエッジ検出
+### GSRM-F (Feature-Preserving GSRM) - シャープエッジ検出【実験的】
 
-GSRM-Fは、GSRMにシャープエッジ検出・保持機能を追加した拡張版です。
+GSRM-Fは、GSRMにシャープエッジ検出・保持機能を追加した**実験的拡張**です。
+
+> **注意**: GSRM-Fは論文に基づかない独自実装です。GNG-DT RobotのPCA法線計算とfeature-preserving meshingの一般的アイデアを組み合わせています。
 
 #### 床と壁テスト (Floor and Wall)
 
