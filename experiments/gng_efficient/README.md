@@ -28,20 +28,40 @@ GNG Efficient は、標準GNGアルゴリズムに2つの最適化を適用し�
 
 ## 2D実験
 
-### Triple Ring テスト（静的分布）
+### Triple Ring テスト（静的分布）- 論文版 (UG + Lazy Error)
 
 3つの同心円リングからサンプリングした点群にGNG Efficientを適用。
+論文のパラメータ（Table 2）を使用。
 
 **パラメータ**:
 - max_nodes: 100
-- lambda: 100
-- n_iterations: 5000
+- lambda: 200 (論文デフォルト)
+- beta: 0.9995 (論文デフォルト、減衰係数)
+- use_lazy_error: True
 
 | 成長過程 | 最終状態 |
 |:--------:|:--------:|
 | ![Growth](2d/triple_ring_growth.gif) | ![Final](2d/triple_ring_final.png) |
 
 **結果**: 51ノード、64エッジで3つのリング構造を学習。
+
+---
+
+### Triple Ring テスト（静的分布）- UG only（推奨）
+
+Uniform Gridのみを使用し、標準GNGと同等の結果を得る設定。
+
+**パラメータ**:
+- max_nodes: 100
+- lambda: 100 (標準GNGデフォルト)
+- beta: 0.005 (標準GNGデフォルト、減衰率)
+- use_lazy_error: False
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![Growth](2d/triple_ring_ug_only_growth.gif) | ![Final](2d/triple_ring_ug_only_final.png) |
+
+**結果**: 52ノード、71エッジで3つのリング構造を学習。標準GNGと同等の挙動。
 
 ---
 
@@ -161,8 +181,10 @@ python benchmark_gng_efficient.py --max-nodes 500 1000 --n-samples 50000
 experiments/gng_efficient/
 ├── README.md           # このファイル
 ├── 2d/
-│   ├── triple_ring_final.png
+│   ├── triple_ring_final.png         # 論文版（UG+Lazy）
 │   ├── triple_ring_growth.gif
+│   ├── triple_ring_ug_only_final.png # UG only（推奨）
+│   ├── triple_ring_ug_only_growth.gif
 │   └── tracking.gif
 └── 3d/
     ├── floor_wall_final.png
@@ -172,9 +194,12 @@ experiments/gng_efficient/
 ## 実行方法
 
 ```bash
-# 2D Triple Ring
+# 2D Triple Ring (論文版: UG + Lazy Error)
 cd experiments/2d_visualization
 python test_gng_efficient_triple_ring.py
+
+# 2D Triple Ring (UG only: 標準GNG同等、推奨)
+python test_gng_efficient_ug_only_triple_ring.py
 
 # 2D Tracking
 python test_gng_efficient_tracking.py
