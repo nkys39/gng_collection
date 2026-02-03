@@ -263,7 +263,7 @@ GNG-DTとAiS-GNGを組み合わせた実験的アルゴリズム。複数トポ�
 
 ### DD-GNG (Dynamic Density GNG)
 
-動的密度制御付きGNG。注目領域（Attention Region）を設定することで、その領域内のノード密度を高くできる。ノード強度（strength）に基づく学習率調整とノード挿入優先度制御。床と壁の境界部分に注目領域を設定。
+動的密度制御付きGNG。注目領域（Attention Region）を設定することで、その領域内のノード密度を高くできる。ノード強度（strength）に基づく学習率調整とノード挿入優先度制御。床と壁の境界部分に注目領域を設定。また、サーフェス分類（平面/エッジ/コーナー）に基づく**自動注目領域検出**もサポート（安定コーナーを自動検出）。
 
 **Python実装:**
 | 成長過程 | 最終状態 |
@@ -527,10 +527,12 @@ nodes, pos_edges, color_edges, normal_edges, trav_edges = gng.get_multi_graph()
 ### DD-GNG (Dynamic Density GNG)
 
 注目領域に高密度ノードを配置する動的密度制御。リアルタイムロボットビジョン向け。
+手動の注目領域指定と、サーフェス分類に基づく自動検出の両方をサポート。
 
 ```python
 from algorithms.dd_gng.python.model import DynamicDensityGNG, DDGNGParams
 
+# 手動注目領域指定
 params = DDGNGParams(
     max_nodes=150,
     strength_power=4,       # 強度のべき乗
@@ -552,14 +554,33 @@ nodes, edges = ddgng.get_graph()
 strengths = ddgng.get_node_strengths()  # 各ノードの強度
 ```
 
+```python
+# 自動注目領域検出（3D専用）
+params = DDGNGParams(
+    max_nodes=150,
+    auto_detect_attention=True,  # 自動検出を有効化
+    stability_threshold=16,      # 安定性閾値
+    corner_strength=5.0,         # コーナー強度ボーナス
+)
+ddgng = DynamicDensityGNG(n_dim=3, params=params, seed=42)
+ddgng.train(points_3d, n_iterations=8000)
+
+# サーフェス分類と自動検出結果を取得
+surface_types = ddgng.get_node_surface_types()   # 平面/エッジ/コーナー
+auto_attention = ddgng.get_node_auto_attention() # 自動検出フラグ
+normals = ddgng.get_node_normals()               # 法線ベクトル
+```
+
 **主な機能：**
 | 機能 | 説明 |
 |------|------|
 | `attention_regions` | 注目領域のリスト（高密度化したい領域） |
-| `strength` | ノード強度（基本1.0 + 注目領域ボーナス） |
+| `strength` | ノード強度（基本1.0 + 注目領域/コーナーボーナス） |
 | `strength_power/scale` | 強度ベースの優先度計算 `error * (scale * strength)^power` |
 | `use_strength_learning` | 強度ベース学習率調整（強度高いと学習率低下） |
 | `use_strength_insertion` | 強度ベースノード挿入優先度 |
+| `auto_detect_attention` | サーフェス分類に基づく自動注目領域検出（3D専用） |
+| `surface_type` | PCA法線からの分類（平面/エッジ/コーナー） |
 
 ### SOM
 
