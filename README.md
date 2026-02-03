@@ -16,6 +16,7 @@ Growing Neural Gas (GNG) およびその関連アルゴリズムのコレクシ�
 | **GNG-T** | GNG + ヒューリスティック三角形分割（四角形探索・交差点探索） |
 | **GNG-D** | GNG + 明示的Delaunay三角形分割（scipy.spatial.Delaunay） |
 | **GNG-DT** | GNG + 複数トポロジー学習（位置、色、法線で独立したエッジ構造）。ロボット版も提供 |
+| **DD-GNG** | GNG-U2 + 動的密度制御（注目領域で高密度ノード配置、strength機構） |
 | **AiS-GNG-DT** | GNG-DT + AiS-GNGの組み合わせ実験（複数トポロジー + Add-if-Silent + Utility管理） |
 | **GCS** | 三角メッシュ（単体複体）構造を維持しながら成長 |
 | **Growing Grid** | 矩形グリッド構造を維持しながら行/列を追加 |
@@ -260,6 +261,26 @@ GNG-DTとAiS-GNGを組み合わせた実験的アルゴリズム。複数トポ�
 |:--------:|:--------:|
 | ![AiS-GNG-DT 3D C++](experiments/3d_pointcloud/samples/ais_gng_dt/cpp/floor_wall_growth.gif) | ![AiS-GNG-DT 3D Final C++](experiments/3d_pointcloud/samples/ais_gng_dt/cpp/floor_wall_final.png) |
 
+### DD-GNG (Dynamic Density GNG)
+
+動的密度制御付きGNG。注目領域（Attention Region）を設定することで、その領域内のノード密度を高くできる。ノード強度（strength）に基づく学習率調整とノード挿入優先度制御。
+
+**手動注目領域指定:**
+
+床と壁の境界部分にオレンジ枠で注目領域を手動設定。その領域内のノードに高い強度を付与。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![DD-GNG Manual](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_growth.gif) | ![DD-GNG Manual Final](experiments/3d_pointcloud/samples/dd_gng/python/floor_wall_final.png) |
+
+**自動注目領域検出:**
+
+サーフェス分類（PCAベース）で安定コーナーを自動検出し注目領域として設定。緑=平面、黄=エッジ、赤=コーナー、△=自動検出ノード。
+
+| 成長過程 | 最終状態 |
+|:--------:|:--------:|
+| ![DD-GNG Auto](experiments/3d_pointcloud/samples/dd_gng/python/auto_detect_growth.gif) | ![DD-GNG Auto Final](experiments/3d_pointcloud/samples/dd_gng/python/auto_detect_final.png) |
+
 ### GCS
 
 単体複体（simplicial complex）構造を維持しながら成長。3Dでは四面体から開始。
@@ -287,6 +308,7 @@ gng_collection/
 │   ├── gng_d/           # GNG-D (explicit Delaunay)
 │   ├── gng_dt/          # GNG-DT (Different Topologies)
 │   ├── ais_gng_dt/      # AiS-GNG-DT (実験的: GNG-DT + AiS-GNG)
+│   ├── dd_gng/          # DD-GNG (Dynamic Density GNG)
 │   ├── som/             # Self-Organizing Map
 │   ├── neural_gas/      # Neural Gas
 │   ├── gcs/             # Growing Cell Structures
@@ -315,6 +337,7 @@ gng_collection/
 | GNG-T       | ✓      | ✓   | GNG with Triangulation - ヒューリスティック三角形分割 |
 | GNG-D       | ✓      | -   | GNG with Delaunay - 明示的三角形分割（※scipy依存） |
 | GNG-DT      | ✓      | ✓   | GNG with Different Topologies - 複数トポロジー学習（3D点群用、ロボット版C++含む） |
+| DD-GNG      | ✓      | ✓   | Dynamic Density GNG - 動的密度制御（注目領域で高密度配置） |
 | AiS-GNG-DT  | ✓      | ✓   | GNG-DT + AiS-GNG 実験的組み合わせ（複数トポロジー + Add-if-Silent） |
 | SOM         | ✓      | ✓   | Self-Organizing Map - 固定グリッド |
 | Neural Gas  | ✓      | ✓   | ランクベース競合学習 |
@@ -512,6 +535,64 @@ nodes, pos_edges, color_edges, normal_edges, trav_edges = gng.get_multi_graph()
 | `degree` | 傾斜コスト（経路計画用） |
 | `curvature` | 曲率コスト（PCA残差ベース） |
 
+### DD-GNG (Dynamic Density GNG)
+
+注目領域に高密度ノードを配置する動的密度制御。リアルタイムロボットビジョン向け。
+手動の注目領域指定と、サーフェス分類に基づく自動検出の両方をサポート。
+
+```python
+from algorithms.dd_gng.python.model import DynamicDensityGNG, DDGNGParams
+
+# 手動注目領域指定
+params = DDGNGParams(
+    max_nodes=150,
+    strength_power=4,       # 強度のべき乗
+    strength_scale=4.0,     # 強度のスケール
+    use_strength_learning=True,   # 強度ベース学習率調整
+    use_strength_insertion=True,  # 強度ベースノード挿入
+)
+ddgng = DynamicDensityGNG(n_dim=3, params=params, seed=42)
+
+# 注目領域を追加（梯子や境界など）
+ddgng.add_attention_region(
+    center=[0.5, 0.0, 0.1],  # 中心位置
+    size=[0.4, 0.08, 0.08],  # 領域サイズ
+    strength=5.0,            # 強度ボーナス
+)
+
+ddgng.train(points_3d, n_iterations=8000)
+nodes, edges = ddgng.get_graph()
+strengths = ddgng.get_node_strengths()  # 各ノードの強度
+```
+
+```python
+# 自動注目領域検出（3D専用）
+params = DDGNGParams(
+    max_nodes=150,
+    auto_detect_attention=True,  # 自動検出を有効化
+    stability_threshold=16,      # 安定性閾値
+    corner_strength=5.0,         # コーナー強度ボーナス
+)
+ddgng = DynamicDensityGNG(n_dim=3, params=params, seed=42)
+ddgng.train(points_3d, n_iterations=8000)
+
+# サーフェス分類と自動検出結果を取得
+surface_types = ddgng.get_node_surface_types()   # 平面/エッジ/コーナー
+auto_attention = ddgng.get_node_auto_attention() # 自動検出フラグ
+normals = ddgng.get_node_normals()               # 法線ベクトル
+```
+
+**主な機能：**
+| 機能 | 説明 |
+|------|------|
+| `attention_regions` | 注目領域のリスト（高密度化したい領域） |
+| `strength` | ノード強度（基本1.0 + 注目領域/コーナーボーナス） |
+| `strength_power/scale` | 強度ベースの優先度計算 `error * (scale * strength)^power` |
+| `use_strength_learning` | 強度ベース学習率調整（強度高いと学習率低下） |
+| `use_strength_insertion` | 強度ベースノード挿入優先度 |
+| `auto_detect_attention` | サーフェス分類に基づく自動注目領域検出（3D専用） |
+| `surface_type` | PCA法線からの分類（平面/エッジ/コーナー） |
+
 ### SOM
 
 ```python
@@ -664,6 +745,7 @@ from algorithms.gng_t.python.model_kubota import GNGTKubota, GNGTKubotaParams
 - **GNG-T**: Kubota, N. & Satomi, M. (2008). "Growing Neural Gas with Triangulation"
 - **GNG-D**: Martinetz & Schulten (1994) の明示的Delaunay手法を応用
 - **GNG-DT**: Toda, Y., et al. (2022). "Learning of Point Cloud Data by Growing Neural Gas with Different Topologies"
+- **DD-GNG**: Saputra, A.A., et al. (2019). "Dynamic Density Topological Structure Generation for Real-Time Ladder Affordance Detection"
 - **SOM**: Kohonen, T. (1982). "Self-organized formation of topologically correct feature maps"
 - **Neural Gas**: Martinetz, T. and Schulten, K. (1991). "A Neural-Gas Network Learns Topologies"
 - **GCS**: Fritzke, B. (1994). "Growing cell structures - a self-organizing network"
